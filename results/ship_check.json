@@ -9,12 +9,12 @@
     {
       "check": "pytest in clone",
       "ok": true,
-      "detail": "..................................................                       [100%]"
+      "detail": "........................................................................ [100%]"
     },
     {
       "check": "claim audit",
       "ok": true,
-      "detail": "99/99 claims found in the README",
+      "detail": "132/132 claims hold in place; 132/132 anchored to a sentence or table cell",
       "note": ""
     },
     {
@@ -45,8 +45,8 @@
     {
       "check": "no single file over 25 MB",
       "ok": true,
-      "detail": "51 tracked files; big=[]"
+      "detail": "55 tracked files; big=[]"
     }
   ],
-  "head": "0ce47c1"
+  "head": "1a3cc68"
 }
