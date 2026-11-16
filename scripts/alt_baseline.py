@@ -13,7 +13,9 @@ Models (all corrections to the additivity residual, see src/epsceil/baseline.py)
 
   additive                 nothing fitted (recomputed, not quoted)
   additive+pooled_offset   one constant learned on OTHER assays (GroupKFold(5)
-                           by assay); needs no doubles from the scored protein
+                           by assay); no residual of the scored assay enters it,
+                           but it is applied in that assay's residual-sd units,
+                           and that sd itself comes from the assay's doubles
   additive+assay_offset    the assay's own mean residual, inner 5-fold split
   additive+position        + alpha_p + alpha_q per assay, inner 5-fold split
   additive+position+pair_rank{1,2,3}
@@ -73,6 +75,39 @@ ROWS = (["additive", "additive+pooled_offset", "additive+assay_offset",
         + [f"additive+position+pair_rank{k}" for k in RANKS])
 README_PLAIN = {"auc_direction": 0.884, "frac_outside_2sd": 0.126,
                 "bias_mean_sd": -0.94}
+TIE = 1e-9               # "beats" means by more than float noise
+_OWN = ("fitted on 4/5 of the scored assay's own doubles (inner KFold(5)); "
+        "ridge lambda chosen by GroupKFold(5) over the other assays")
+USES = {
+    "additive": "nothing fitted",
+    "additive+pooled_offset": (
+        "one constant from the OTHER assays (GroupKFold(5) by assay); no residual "
+        "of the scored assay enters it, but it is applied in that assay's "
+        "residual-sd units, which come from its doubles"),
+    "additive+assay_offset": ("fitted on 4/5 of the scored assay's own doubles "
+                              "(inner KFold(5))"),
+    "additive+position": _OWN,
+    **{f"additive+position+pair_rank{k}": _OWN for k in RANKS},
+}
+CAVEATS = [
+    "Every per-assay row is fitted on 4/5 of the scored protein's own measured "
+    "doubles. A lab that has only singles has none of them, so these rows bound "
+    "what a stronger baseline can do; they are not a singles-only predictor.",
+    "The inner split is random over pairs, so a held-out pair usually shares both "
+    "positions (and often a single mutation) with training pairs. That is the "
+    "most favourable split for position terms; holding out whole position pairs "
+    "was not run.",
+    "Position terms can absorb a global nonlinearity (for example a floor or "
+    "saturation of the assay), because single-effect size clusters by position. "
+    "A monotone global-epistasis fit was not run, so the position R2 is not "
+    "evidence of position-SPECIFIC epistasis.",
+    "r2_resid_var is out-of-fold R2 of the SIGNED residual. The README's position "
+    "figure (0.140) is in-sample R2 of |residual| grouped by position pair; the two "
+    "are different quantities and are not comparable.",
+    "The pooled offset is expressed in each scored assay's residual-sd units; "
+    "turning it into raw units needs that assay's residual sd, which comes from "
+    "its doubles.",
+]
 
 
 def _rng(assay: str, rep: int) -> np.random.Generator:
@@ -233,13 +268,19 @@ def summarise_models(p2, n_perm) -> list[dict]:
                 for mt in METRICS}
             row["null_median_delta_vs_additive"] = {
                 mt: float(np.median(null_mean[mt] - plain[mt])) for mt in METRICS}
+            def n_above(x, y):
+                return f"{int((x - y > TIE).sum())}/{len(p2)}"
             row["assays_real_beats_own_null"] = {
-                "r2_resid_var": f"{int((real['r2_resid_var'] > null_mean['r2_resid_var']).sum())}/{len(p2)}",
-                "auc_direction": f"{int((real['auc_direction'] > null_mean['auc_direction']).sum())}/{len(p2)}",
-                "frac_outside_2sd_lower": f"{int((real['frac_outside_2sd'] < null_mean['frac_outside_2sd']).sum())}/{len(p2)}",
+                "r2_resid_var": n_above(real["r2_resid_var"],
+                                        null_mean["r2_resid_var"]),
+                "auc_direction": n_above(real["auc_direction"],
+                                         null_mean["auc_direction"]),
+                "frac_outside_2sd_lower": n_above(null_mean["frac_outside_2sd"],
+                                                  real["frac_outside_2sd"]),
             }
-            row["assays_auc_above_additive"] = \
-                f"{int((real['auc_direction'] > plain['auc_direction']).sum())}/{len(p2)}"
+            row["assays_auc_above_additive"] = n_above(real["auc_direction"],
+                                                       plain["auc_direction"])
+        row["uses"] = USES[name]
         rows.append(row)
     return rows
 
@@ -328,6 +369,37 @@ def main() -> int:
             f"{best} {med[best]['auc_direction']:.3f} "
             f"(null {nul[best]['auc_direction']:.3f})"),
     }
+    rows_by = {m["model"]: m for m in models}
+    b = rows_by[best]
+    verdict["gap_survives"] = {
+        "bias": (
+            f"median bias {med['additive']['bias_mean_sd']:+.3f} sd -> "
+            f"{med['additive+assay_offset']['bias_mean_sd']:+.3f} with the assay's "
+            f"own offset, and {nul['additive+assay_offset']['bias_mean_sd']:+.3f} "
+            f"under that offset's permutation null; "
+            f"{med['additive+pooled_offset']['bias_mean_sd']:+.3f} with one "
+            "offset learned on the other assays"),
+        "beyond_2sd": (
+            f"{med['additive']['frac_outside_2sd']:.3f} plain -> "
+            f"{med['additive+pooled_offset']['frac_outside_2sd']:.3f} pooled "
+            f"offset -> {med['additive+assay_offset']['frac_outside_2sd']:.3f} own "
+            f"offset (plain centred {med['additive']['frac_outside_2sd_centred']:.3f})"
+            f" -> {med[best]['frac_outside_2sd']:.3f} {best}; the position "
+            f"model's null {nul['additive+position']['frac_outside_2sd']:.3f}"),
+        "spread": (
+            f"the strongest baseline ({best}) leaves "
+            f"{1 - med[best]['r2_resid_var']:.3f} of the residual variance: R2 "
+            f"{med[best]['r2_resid_var']:.3f} against its null "
+            f"{nul[best]['r2_resid_var']:+.3f}, above the null in "
+            f"{b['assays_real_beats_own_null']['r2_resid_var']} assays"),
+        "ranking": (
+            f"median AUC {med['additive']['auc_direction']:.3f} -> "
+            f"{med[best]['auc_direction']:.3f} (null "
+            f"{nul[best]['auc_direction']:.3f}); per-assay median gain "
+            f"{b['median_delta_vs_additive']['auc_direction']:+.4f}, above "
+            f"additive in {b['assays_auc_above_additive']} assays"),
+        "needs_doubles": USES[best],
+    }
 
     per_assay = []
     for d in p2:
@@ -408,6 +480,7 @@ def main() -> int:
         },
         "n_assays": len(p2),
         "n_pairs": int(sum(d["n_pairs"] for d in p1)),
+        "caveats": CAVEATS,
         "models": models,
         "verdict": verdict,
         "outer_folds": folds,
@@ -427,9 +500,8 @@ def main() -> int:
             print(f"{'   null':38s} {nm['r2_resid_var']:7.3f} "
                   f"{nm['auc_direction']:6.3f} {nm['frac_outside_2sd']:6.3f} "
                   f"{nm['bias_mean_sd']:+7.3f}")
-    for k, v in verdict.items():
-        if isinstance(v, str):
-            print(f"{k}: {v}")
+    for k, v in verdict["gap_survives"].items():
+        print(f"{k}: {v}")
     return 0
 
 
