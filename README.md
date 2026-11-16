@@ -71,6 +71,28 @@ which the tercile table disproves; both numbers are reported so the misreading
 cannot recur. The simulation null rules out the obvious artefact (the residual
 contains `predicted` by construction — with the two independent, ρ is 0.001).
 
+## Where the failures concentrate
+
+The magnitude prior above is one signal. Two further probes, each with a null:
+
+**Positions matter, and this is the strongest prior in the repo.** The share of
+residual variance explained by sequence position alone is **0.140**
+against a permutation null of 0.002 (analytic
+0.002), and it exceeds that null in
+**47/48 assays**. Roughly one seventh of the
+epistasis in these data is attributable to *which residues are involved*, not how
+mild their singles look — so a lab that has already run a double-mutant
+experiment can flag its hot positions for the next round at no extra cost.
+
+**Residue identity does not matter.** Testing whether particular substituting
+residues carry larger residuals, the strongest candidate (alanine, in
+37 assays) sits above its own assay median in only 81% of them — below
+the 85% threshold set before looking, and against a 50% null. Verdict **NOT_SUPPORTED**, reported as a
+negative rather than dropped.
+
+Neither probe explains away the earlier finding; they are different axes of the
+same residual.
+
 ## Can a protein language model do better?
 
 Two probes, both with GroupKFold cross-validation **by protein** (pairs from one

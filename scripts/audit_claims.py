@@ -107,6 +107,29 @@ def build_claims() -> list[tuple[str, list[str], str]]:
             claims.append(("esm pairs", [f"{int(e['n_pairs']):,}"],
                            "esm_context.json"))
 
+    depth_p = RES / "depth.json"
+    if depth_p.exists():
+        dj = json.loads(depth_p.read_text())
+        h2 = dj.get("H2_position", {})
+        if "observed_r2_median" in h2:
+            claims.append(("position r2", [f"{h2['observed_r2_median']:.3f}"],
+                           "depth.json H2_position"))
+        if "permutation_null_median" in h2:
+            claims.append(("position null",
+                           [f"{h2['permutation_null_median']:.3f}"],
+                           "depth.json H2_position"))
+        if "observed_exceeds_null_in" in h2 and "n_assays" in h2:
+            claims.append(("position assays",
+                           [f"{h2['observed_exceeds_null_in']}/{h2['n_assays']}"],
+                           "depth.json H2_position"))
+        h1 = dj.get("H1_residue", {})
+        if h1.get("top"):
+            top = sorted(h1["top"].items())[0][1]
+            if "frac_above_assay_median" in top:
+                claims.append(("residue top fraction",
+                               [f"{top['frac_above_assay_median']:.0%}"],
+                               "depth.json H1_residue"))
+
     if probe_p.exists():
         q = json.loads(probe_p.read_text())
         r = q.get("spearman_distance")

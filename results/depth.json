@@ -1,0 +1,52 @@
+{
+  "n_pairs": 813014,
+  "n_assays": 48,
+  "H2_position": {
+    "n_assays": 48,
+    "observed_r2_median": 0.14037611306787798,
+    "permutation_null_median": 0.002176259164762807,
+    "analytic_null_median": 0.0019479233227093172,
+    "observed_exceeds_null_in": 47,
+    "verdict": "SUPPORTED"
+  },
+  "H1_residue": {
+    "n_residues_tested": 20,
+    "top": {
+      "A": {
+        "n_assays": 37.0,
+        "frac_above_assay_median": 0.811,
+        "median_ratio": 1.036
+      },
+      "K": {
+        "n_assays": 31.0,
+        "frac_above_assay_median": 0.677,
+        "median_ratio": 1.018
+      },
+      "I": {
+        "n_assays": 37.0,
+        "frac_above_assay_median": 0.622,
+        "median_ratio": 1.013
+      }
+    },
+    "bottom": {
+      "W": {
+        "n_assays": 30.0,
+        "frac_above_assay_median": 0.267,
+        "median_ratio": 0.957
+      },
+      "C": {
+        "n_assays": 30.0,
+        "frac_above_assay_median": 0.367,
+        "median_ratio": 0.973
+      },
+      "P": {
+        "n_assays": 27.0,
+        "frac_above_assay_median": 0.37,
+        "median_ratio": 0.96
+      }
+    },
+    "null_expectation": 0.5,
+    "verdict": "NOT_SUPPORTED",
+    "note": "SUPPORTED means at least one residue is above its assay median in >=85% of assays where it appears, well beyond the 50% null."
+  }
+}
