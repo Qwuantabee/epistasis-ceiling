@@ -9,11 +9,13 @@ with >=500 pairs. Two things about that set were never tested:
      bias and the 12.6% beyond-2sd share are features of that measurement setup -
      a common scale, a common saturation curve - then the corpus median describes
      one experimental design, not "double mutants".
-  2. **17 assays are excluded from every correlation claim** and 5,348 pairs with
+  2. **17 assays are excluded from every 48-assay median** and 5,348 pairs with
      them. They were excluded for SIZE (fewer than 500 pairs), not for being
-     wrong, so they are the only genuinely held-out set in the repo: they
-     contributed nothing to any published number, and if the effect is real they
-     should agree with it.
+     wrong. They are held out by size, NOT by lab: 15 of the 17 are Tsuboyama,
+     the lab behind 33 of the 48 corpus assays, and 11 of them are among the 59
+     assays of the corpus-scale ESM probe (scripts/esm_scale.py), so they are not
+     outside "every published number". Both facts are computed below and written
+     to the artefact rather than asserted here.
 
 This script tests both, and reports the disagreement honestly rather than
 averaging it away. It fits no model: every statistic is a median over assays with
@@ -26,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -34,7 +37,30 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "results"
-IDX = Path("/home/ubuntu/biotech-portfolio/_data/DMS_substitutions.csv")
+# The ProteinGym index (DMS_substitutions.csv, for first_author) is part of the
+# raw ProteinGym download, not of this repo. Resolution order: --index, then
+# $EPSCEIL_INDEX, then the documented locations below (the first is the default
+# scripts/esm_scale.py uses). A missing index is a clear error, not a traceback.
+INDEX_ENV = "EPSCEIL_INDEX"
+INDEX_SEARCH = (ROOT.parent / "_data" / "DMS_substitutions.csv",
+                ROOT / "data" / "DMS_substitutions.csv")
+
+
+def resolve_index(cli_value: str | None) -> Path:
+    """Return the index path, or exit 1 naming every place that was tried."""
+    if cli_value:                                        # explicit: no fallback
+        cands = [Path(cli_value).expanduser()]
+    elif os.environ.get(INDEX_ENV):                      # explicit: no fallback
+        cands = [Path(os.environ[INDEX_ENV]).expanduser()]
+    else:
+        cands = list(INDEX_SEARCH)
+    for p in cands:
+        if p.is_file():
+            return p
+    raise SystemExit(
+        "heldout.py needs the ProteinGym index DMS_substitutions.csv (it reads "
+        "first_author from it); it is not in the repo. Pass --index PATH or set "
+        f"{INDEX_ENV}=PATH. Looked in: " + ", ".join(str(p) for p in cands))
 
 # Fixed before the run, so a reader can see the bar was not chosen after the
 # numbers. A group "agrees" with the corpus when the corpus median lies inside the
@@ -119,10 +145,14 @@ def main() -> int:
     ap.add_argument("--summary", default=str(RES / "assay_summary.csv"))
     ap.add_argument("--min-pairs", type=int, default=500)
     ap.add_argument("--out", default=str(RES / "heldout.json"))
+    ap.add_argument("--index", default=None,
+                    help="ProteinGym DMS_substitutions.csv; default: "
+                         f"${INDEX_ENV}, then " + ", ".join(str(p) for p in INDEX_SEARCH))
     args = ap.parse_args()
 
+    idx = resolve_index(args.index)
     s = pd.read_csv(args.summary)
-    meta = pd.read_csv(IDX)
+    meta = pd.read_csv(idx)
     m = s.merge(meta[["DMS_id", "first_author", "year", "source_organism"]],
                 left_on="assay", right_on="DMS_id", how="left")
     if m.first_author.isna().any():
@@ -164,26 +194,51 @@ def main() -> int:
                     if diff["bias_sd"].get("p_two_sided", 1.0) < 0.05
                     else "NOT_SUPPORTED"),
         "reading": ("The groups differ in the bias (p from the bootstrap of the "
-                    "median difference) and in the beyond-2-sd share, so the "
-                    "corpus median is a MIXTURE description: not wrong, but not "
-                    "a constant of double mutants either. Both groups keep the "
-                    "same sign, and both rank well."),
+                    "median difference) and in the beyond-2-sd share UNDER THE "
+                    "MEDIAN-OF-ALL-VARIANTS CENTRING. That bias is not a property "
+                    "of additivity: it depends on where each assay's zero is put, "
+                    "and the 33 Tsuboyama assays flip sign under wild type = 0 "
+                    "(results/reference.json), so the bias contrast is a contrast "
+                    "of centring constants, not of labs. The AUC contrast is "
+                    "convention-free: both groups rank well above chance and the "
+                    "level differs by lab family (other labs vs corpus AUC "
+                    "verdict below)."),
     }
 
     # --- H2: the excluded small assays as a held-out set ----------------------
     h2 = group_row("held out: 17 assays under 500 pairs", small, corpus)
     h2["question"] = ("Do the assays excluded from every published number agree "
                       "with them?")
-    h2["included_in_any_published_number"] = False
     h2["authors"] = small.first_author.value_counts().to_dict()
+    h2["n_same_lab_as_corpus"] = int((small.first_author == "Tsuboyama").sum())
+    # Review round 2 (F3): this field used to be a hard-coded False. It is now
+    # computed from the ESM artefact, which DOES use 11 of these assays.
+    esm_used: list[str] = []
+    esm_all: set[str] = set()
+    esm_p = RES / "esm_scale.json"
+    if esm_p.exists():
+        sel = ((json.loads(esm_p.read_text()).get("primary") or {})
+               .get("selection") or {})
+        esm_all = set(sel.get("per_assay_pairs_used") or {})
+        esm_used = sorted(esm_all & set(small.assay))
+    h2["in_esm_scale_probe"] = {"n_assays": len(esm_used),
+                                "n_assays_in_probe": len(esm_all),
+                                "assays": esm_used}
+    h2["included_in_any_published_number"] = bool(esm_used)
+    h2["held_out_by"] = "size (< %d pairs), not by lab" % args.min_pairs
+    h2["bias_verdict_status"] = (
+        "WITHDRAWN: bias_sd depends on the centring convention; under wild type "
+        "= 0 the Tsuboyama assays agree with the corpus (results/reference.json)")
     h2["reading"] = (
-        "These contributed nothing to the 12.6% / 0.884 / -0.94 sd medians, so "
-        "they are the only out-of-sample check available without new data. The "
-        "bias does NOT replicate: their median is positive where the corpus "
-        "median is negative, and the interval spans zero. The RANKING number "
-        "does replicate (AUC inside the corpus interval), which is the split a "
-        "reader should take away - rank well, but do not trust the offset as a "
-        "fixed number.")
+        "Held out by SIZE, not by lab: %d of the %d are Tsuboyama, the lab behind "
+        "most of the corpus, and %d of them are among the %d assays of the ESM "
+        "probe. They are outside the three 48-assay medians only. The bias "
+        "comparison is withdrawn: it compares centring constants (the median of "
+        "all variants moves with the share of doubles in the library), and under "
+        "wild type = 0 the small Tsuboyama assays replicate the big ones. Only the "
+        "ranking comparison is convention-free; its verdict is the auc entry of "
+        "verdict_vs_corpus." % (h2["n_same_lab_as_corpus"], len(small),
+                                len(esm_used), len(esm_all)))
     h2["verdict"] = (
         "bias: " + h2["verdict_vs_corpus"]["bias_sd"]
         + "; ranking: " + h2["verdict_vs_corpus"]["auc"])

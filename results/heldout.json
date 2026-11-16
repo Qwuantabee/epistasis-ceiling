@@ -111,7 +111,7 @@
       }
     },
     "verdict": "SUPPORTED",
-    "reading": "The groups differ in the bias (p from the bootstrap of the median difference) and in the beyond-2-sd share, so the corpus median is a MIXTURE description: not wrong, but not a constant of double mutants either. Both groups keep the same sign, and both rank well."
+    "reading": "The groups differ in the bias (p from the bootstrap of the median difference) and in the beyond-2-sd share UNDER THE MEDIAN-OF-ALL-VARIANTS CENTRING. That bias is not a property of additivity: it depends on where each assay's zero is put, and the 33 Tsuboyama assays flip sign under wild type = 0 (results/reference.json), so the bias contrast is a contrast of centring constants, not of labs. The AUC contrast is convention-free: both groups rank well above chance and the level differs by lab family (other labs vs corpus AUC verdict below)."
   },
   "H2_excluded_small_assays": {
     "group": "held out: 17 assays under 500 pairs",
@@ -144,13 +144,33 @@
       ]
     },
     "question": "Do the assays excluded from every published number agree with them?",
-    "included_in_any_published_number": false,
     "authors": {
       "Tsuboyama": 15,
       "Chen": 1,
       "Ding": 1
     },
-    "reading": "These contributed nothing to the 12.6% / 0.884 / -0.94 sd medians, so they are the only out-of-sample check available without new data. The bias does NOT replicate: their median is positive where the corpus median is negative, and the interval spans zero. The RANKING number does replicate (AUC inside the corpus interval), which is the split a reader should take away - rank well, but do not trust the offset as a fixed number.",
+    "n_same_lab_as_corpus": 15,
+    "in_esm_scale_probe": {
+      "n_assays": 11,
+      "n_assays_in_probe": 59,
+      "assays": [
+        "NUSG_MYCTU_Tsuboyama_2023_2MI6",
+        "ODP2_GEOSE_Tsuboyama_2023_1W4G",
+        "PSAE_PICP2_Tsuboyama_2023_1PSE",
+        "RBP1_HUMAN_Tsuboyama_2023_2KWH",
+        "RFAH_ECOLI_Tsuboyama_2023_2LCL",
+        "RL20_AQUAE_Tsuboyama_2023_1GYZ",
+        "SPG2_STRSG_Tsuboyama_2023_5UBS",
+        "SRBS1_HUMAN_Tsuboyama_2023_2O2W",
+        "TCRG1_MOUSE_Tsuboyama_2023_1E0L",
+        "TNKS2_HUMAN_Tsuboyama_2023_5JRT",
+        "UBR5_HUMAN_Tsuboyama_2023_1I2T"
+      ]
+    },
+    "included_in_any_published_number": true,
+    "held_out_by": "size (< 500 pairs), not by lab",
+    "bias_verdict_status": "WITHDRAWN: bias_sd depends on the centring convention; under wild type = 0 the Tsuboyama assays agree with the corpus (results/reference.json)",
+    "reading": "Held out by SIZE, not by lab: 15 of the 17 are Tsuboyama, the lab behind most of the corpus, and 11 of them are among the 59 assays of the ESM probe. They are outside the three 48-assay medians only. The bias comparison is withdrawn: it compares centring constants (the median of all variants moves with the share of doubles in the library), and under wild type = 0 the small Tsuboyama assays replicate the big ones. Only the ranking comparison is convention-free; its verdict is the auc entry of verdict_vs_corpus.",
     "verdict": "bias: NOT_SUPPORTED; ranking: SUPPORTED",
     "hypothesis": "the published bias and ranking both hold out of sample",
     "verdict_SUPPORTED_means": "the held-out group's median agrees with the corpus median"
