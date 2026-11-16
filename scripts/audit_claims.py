@@ -304,6 +304,154 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
                 claims.append((label, [f"{v:+.2f}", f"{abs(v):.2f}"],
                                f"figure_stats.json {key}"))
 
+    # --- stronger baselines (scripts/alt_baseline.py) ------------------------
+    # The section is a table of model comparisons, so every cell a reader can see
+    # is checked against the artefact - including the nulls, because the null is
+    # the claim there: a model that matches its own permutation null is not
+    # structure, and the README says exactly that about the offsets.
+    alt_p = RES / "alt_baseline.json"
+    if alt_p.exists():
+        a = json.loads(alt_p.read_text())
+        # ONLY the models the README table shows. Claiming on all seven would
+        # demand that every fitted variant appear on the page, which is backwards:
+        # the audit follows the prose, it does not dictate the table. Rank 1 and 2
+        # are in the artefact for completeness and are not argued from here.
+        shown = ("additive", "additive+pooled_offset", "additive+assay_offset",
+                 "additive+position", "additive+position+pair_rank3")
+        for m in a.get("models", []):
+            name = str(m.get("model"))
+            if name not in shown:
+                continue
+            med = m.get("median") or {}
+            nul = m.get("null_median") or {}
+            for key, short, fmts in (
+                    ("r2_resid_var", "r2", ("{:.3f}", "{:.0f}")),
+                    ("auc_direction", "auc", ("{:.3f}",)),
+                    ("frac_outside_2sd", "beyond2", None),
+                    ("bias_mean_sd", "bias", ("{:.2f}",))):
+                v = med.get(key)
+                if v is None:
+                    continue
+                if fmts is None:
+                    spell = _pct(100 * v)
+                else:
+                    spell = [f.format(v) for f in fmts]
+                claims.append((f"alt_baseline {name} {short}", spell,
+                               f"alt_baseline.json {name} median.{key}"))
+            nv = nul.get("r2_resid_var")
+            if nv is not None:
+                claims.append((f"alt_baseline {name} r2 null",
+                               [f"{nv:.3f}"],
+                               f"alt_baseline.json {name} null r2"))
+        # the per-assay win counts the prose quotes
+        for m in a.get("models", []):
+            if m.get("model") in ("additive+position+pair_rank3",
+                                  "additive+position"):
+                bl = m.get("assays_real_beats_own_null") or {}
+                if isinstance(bl, dict) and bl.get("r2_resid_var"):
+                    claims.append((f"alt_baseline {m['model']} beats null",
+                                   [str(bl["r2_resid_var"])],
+                                   f"alt_baseline.json {m['model']} "
+                                   "assays_real_beats_own_null"))
+        # ONLY the pair model's AUC win count is argued in the prose ("wins in
+        # only 34/48 assays"). The position-only 28/48 is in the artefact and the
+        # table's other columns, but no sentence claims it, so claiming it here
+        # would be the audit inventing a fact rather than checking one.
+        for m in a.get("models", []):
+            if m.get("model") == "additive+position+pair_rank3" \
+                    and m.get("assays_auc_above_additive"):
+                claims.append(("alt_baseline pair_rank3 auc wins",
+                               [str(m["assays_auc_above_additive"])],
+                               "alt_baseline.json pair_rank3 auc wins"))
+        gs = (a.get("verdict") or {}).get("gap_survives") or {}
+        if gs.get("spread"):
+            # "leaves 0.619 of the residual variance" is written as 62% in the
+            # prose, so both spellings have to satisfy the check - the artefact
+            # stores the fraction, the README rounds it.
+            text = str(gs["spread"])
+            m_leave = re.search(r"leaves ([0-9.]+) of the residual", text)
+            if m_leave:
+                frac = float(m_leave.group(1))
+                claims.append(("alt_baseline variance left",
+                               [m_leave.group(1), f"{round(frac * 100)}%",
+                                f"{frac * 100:.0f}%"],
+                               "alt_baseline.json gap_survives.spread"))
+
+    # --- corpus-scale ESM probe (scripts/esm_scale.py) -----------------------
+    esm_scale_p = RES / "esm_scale.json"
+    if esm_scale_p.exists():
+        e = json.loads(esm_scale_p.read_text())
+        sel = ((e.get("primary") or {}).get("selection")) or {}
+        for key, label, fmt in (
+                ("pairs_used", "esm_scale pairs", "{:,}"),
+                ("fraction_of_eligible_pairs", "esm_scale corpus fraction", None),
+                ("assays_used", "esm_scale assays", "{}")):
+            v = sel.get(key)
+            if v is None:
+                continue
+            spell = ([f"{100 * v:.1f}%"] if fmt is None
+                     else [fmt.format(v) if fmt != "{}" else str(v)])
+            claims.append((label, spell, f"esm_scale.json selection.{key}"))
+        heads = (e.get("primary") or {}).get("heads") or {}
+        for hid in ("a", "b", "c"):
+            vd = (heads.get(hid) or {}).get("verdict") or {}
+            # head_mean and control_mean are both quoted in the prose ("(a) scores
+            # +0.026 against a shuffled control of +0.055"). delta is not: the
+            # README reports the two arms and lets the reader subtract, so
+            # claiming delta would demand a number the page never states.
+            for key, label in (("head_mean", f"esm_scale head {hid} rho"),
+                               ("control_mean", f"esm_scale head {hid} control")):
+                v = vd.get(key)
+                if v is not None:
+                    claims.append((label, [f"{v:+.3f}", f"{v:.3f}"],
+                                   f"esm_scale.json primary.heads.{hid}.{key}"))
+        inc = (e.get("headline") or {}).get("incremental_rho_of_esm_over_prior")
+        if inc is not None:
+            claims.append(("esm_scale incremental over prior",
+                           [f"{inc:+.3f}"],
+                           "esm_scale.json headline incremental rho"))
+        # the 100% sensitivity run must be checkable too. Its column in the README
+        # states VERDICTS, not rho values, so the audit checks the one number the
+        # page does carry from that run (the pair count) and the verdict
+        # correspondence is checked structurally by
+        # tests/test_claims.py::test_esm_verdict_table_matches_the_artefact.
+        # Claiming a rho here would demand a number the README never prints, which
+        # is the audit inventing a requirement rather than checking a claim.
+        sens = e.get("sensitivity") or []
+        if sens:
+            ssh = (sens[0].get("selection") or {})
+            if ssh.get("pairs_used"):
+                claims.append(("esm_scale full-corpus pairs",
+                               [f"{int(ssh['pairs_used']):,}"],
+                               "esm_scale.json sensitivity selection.pairs_used"))
+
+    # --- prior units (scripts/prior_units.py) --------------------------------
+    pu_p = RES / "prior_units.json"
+    if pu_p.exists():
+        u = json.loads(pu_p.read_text())
+        for grp, key, label in (
+                ("within_assay_raw_units", "median_rho",
+                 "prior units within raw"),
+                ("within_assay_sd_scaled", "median_rho",
+                 "prior units within sd-scaled")):
+            v = (u.get(grp) or {}).get(key)
+            if v is not None:
+                claims.append((label, [f"{v:+.3f}", f"{v:.3f}"],
+                               f"prior_units.json {grp}.{key}"))
+        for key, label in (("pooled_across_assays_raw_units",
+                            "prior units pooled raw"),
+                           ("pooled_across_assays_sd_scaled",
+                            "prior units pooled sd-scaled")):
+            v = u.get(key)
+            if v is not None:
+                claims.append((label, [f"{v:+.3f}", f"{v:.3f}"],
+                               f"prior_units.json {key}"))
+        dev = u.get("max_abs_deviation_within_assay")
+        if dev is not None:
+            claims.append(("prior units max deviation", [f"{dev:.2e}",
+                                                         "0.00e+00"],
+                           "prior_units.json max_abs_deviation_within_assay"))
+
     return claims, unverifiable
 
 

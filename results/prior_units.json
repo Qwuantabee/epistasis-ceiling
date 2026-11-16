@@ -1,0 +1,20 @@
+{
+  "question": "Is the free prior's rho a property of the prior or of the units it is pooled in?",
+  "n_assays": 48,
+  "n_pairs": 813014,
+  "within_assay_raw_units": {
+    "median_rho": 0.3125973583144545,
+    "assays_positive": 47
+  },
+  "within_assay_sd_scaled": {
+    "median_rho": 0.3125973583144545,
+    "assays_positive": 47
+  },
+  "max_abs_deviation_within_assay": 0.0,
+  "pooled_across_assays_raw_units": -0.02536908083019795,
+  "pooled_across_assays_sd_scaled": 0.10510273313633481,
+  "verdict": "SUPPORTED",
+  "claim_under_test": "the free prior ranks |residual| correctly inside an assay, and its rho changes sign only when pairs from assays with different scales are pooled",
+  "reading": "Within an assay the prior is positive in 47/48 assays at a median rho of +0.313, and dividing it by each assay's own sd changes that by at most 0.0e+00 - the rank statistic is invariant to a positive per-assay constant. Pooled across assays the same quantities give -0.025 in raw units against a positive value once each assay is put on its own scale. So the 'prior ranks backwards' reading in the corpus-scale ESM run is a POOLING artefact: a real defect in a pooled evaluation, and not evidence against the prior itself.",
+  "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python scripts/prior_units.py"
+}

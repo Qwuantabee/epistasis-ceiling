@@ -132,10 +132,11 @@ never tested, and both matter for anyone who wants to use these results.
 
 **The corpus is one lab.** 48 of the 65 assays are Tsuboyama et al. (2023), a
 single study of stability measurements; the other 17 assays come from 13 papers.
-Split by that line, the bias is not one number: **-0.79** sd (95% CI -0.97 to
--0.35) for the Tsuboyama assays against **-1.50** sd (-1.87 to -1.27) for the
-rest, a difference of 0.76 sd with a bootstrap p of 0.0004. Both keep the sign and
-both rank well (AUC 0.839 against 0.941), so the *direction* replicates and the
+Within the 48-assay correlation subset that split is 33 against 15, and the bias is
+not one number: **-0.79** sd (95% CI -0.97 to
+-0.35) for the 33 Tsuboyama assays against **-1.50** sd (-1.87 to -1.27) for the
+15 others, a difference of 0.76 sd with a bootstrap p of 0.0004. Both keep the sign
+and both rank well (AUC 0.839 against 0.941), so the *direction* replicates and the
 *magnitude* does not. The corpus median is a mixture description.
 
 **The 17 assays that were excluded agree about ranking and disagree about bias.**
@@ -215,6 +216,50 @@ finding out of nothing:
   artefact — the caveats above are about what the number *means*, not whether it
   is real.
 
+## Does a stronger baseline close the gap?
+
+Everything above judges additivity — the crudest model a lab could use. The obvious
+objection is that the gap is just a weak baseline, so it was measured against
+stronger ones: a per-position term, and a low-rank position-pair interaction. Every
+per-pair prediction is made by a fit that never saw that pair (out-of-fold, inner
+KFold(5) within the assay), the threshold is the same 2 sd for every model, and each
+fitted model is compared to a permutation null of itself.
+
+| model | R² of residual var. (null) | AUC (null) | beyond 2 sd (null) | bias, sd |
+|---|---|---|---|---|
+| plain additivity (recomputed) | 0 | 0.884 | 12.6% | **-0.94** |
+| + one offset learned on the other assays | 0 | 0.884 | 6.7% | -0.07 |
+| + the assay's own offset | -0.001 | 0.884 | 4.6% | 0.00 |
+| + position | **0.333** (-0.001) | 0.903 (0.884) | 2.5% (4.6%) | 0.00 |
+| + position + position-pair rank 3 | **0.381** (-0.006) | **0.905** (0.884) | 2.5% (4.6%) | 0.00 |
+
+Three things follow, and only one of them is a win for the stronger model.
+
+**The bias is one constant per assay, and that is the whole of it.** Removing a
+single offset per assay — even the offset's own permutation null, which contains no
+structure at all — takes the median bias from -0.94 sd to 0.00 and the beyond-2-sd
+share from 12.6% to **4.6%**, which is exactly the centred figure reported above.
+So 8 of the 12.6 points were never epistasis: they were the additive prediction
+sitting off zero in that assay.
+
+**The spread is real and mostly survives.** The best model removes **38%** of the
+residual variance and still leaves **62%**. The pair model beats its own null in
+**48/48 assays** on variance removed (the position term alone in 47/48), so this is
+not a fitting artefact; the residual is genuinely not additive noise.
+
+**Ranking barely moves.** Median AUC goes 0.884 → **0.905**, a median gain of
++0.0081, and the pair model wins in only **34/48 assays**. A model that needs 4/5 of
+the assay's own measured doubles to gain 8 points of AUC is not what a lab with
+singles-only can use.
+
+That last caveat is the important one, and it is in `results/alt_baseline.json`
+rather than here: every per-assay row is fitted on 4/5 of **that protein's own
+doubles**, so these numbers bound what a stronger baseline can achieve, not what a
+singles-only design can. Held-out whole position pairs were not run, so the position
+term could also be absorbing a global nonlinearity such as assay saturation. What
+the table does establish is that the *gap* — 62% of the variance, and a ceiling on
+ranking — is not an artefact of using the crudest model.
+
 ## Can a protein language model do better?
 
 Three probes. The first two were in the earlier draft; the third is the one that
@@ -248,6 +293,41 @@ residue identity (rank correlation across assay halves +0.50), and ESM-2 context
 What survives is the ranking result, AUC 0.884, and the fact that the residual is
 biased — neither of which lets you pick the pairs in advance.
 
+### The same test at corpus scale
+
+The probe above used 36,000 pairs (**4.4%** of the corpus) and one estimator, so it
+could only say "this estimator found nothing". The re-run
+(`scripts/esm_scale.py`) covers **59 assays and 319,014 pairs — 39.0%** of the
+corpus at a 50,000-pair-per-assay cap, with a **100%** run (817,120 pairs) as a
+sensitivity check, and three heads instead of one. The verdict rule was committed
+in `b323e50` before any head was fitted.
+
+| head | 39.0% of corpus | 100% of corpus |
+|---|---|---|
+| (a) the shipped PCA(100)+RidgeCV estimator | INCONCLUSIVE | NOT_SUPPORTED |
+| (b) early-stopped linear on window embeddings, no interaction terms | NOT_SUPPORTED | INCONCLUSIVE |
+| (c) the free prior always present, ESM block on top | INCONCLUSIVE | NOT_SUPPORTED |
+
+**No head beats its larger control at either sample size.** Head (a) scores +0.026
+against a shuffled control of +0.055; (b) -0.017 against +0.002; (c) +0.031 against
++0.058. The nominal gain of ESM over the free prior is **+0.154 ± 0.084** — but
+shuffling the ESM rows within an assay gives **+0.181 ± 0.094**, *more*, so that
+gain comes from knowing which assay a pair belongs to, not from the pair. At full
+corpus, (a) and (c) fall to NOT_SUPPORTED outright. The null is now a statement
+about the corpus rather than about one window size and one estimator.
+
+One defect the re-run exposed is worth publishing because it is a trap any pooled
+evaluation of these data will hit: `|predicted|` is in raw assay units while the
+residual is in per-assay standard deviations, so pooling pairs across assays lets
+the scale differences drive the ordering. Measured directly
+(`scripts/prior_units.py`), the free prior's **within-assay** rank correlation is
+**+0.313** in raw units and **+0.313** after dividing by each assay's own sd — a
+maximum difference of **0.00e+00** across all 48 assays, because a positive
+per-assay constant cannot reorder anything inside an assay. Pooled across assays
+the same quantity reads **-0.025** in raw units and **+0.105** once each assay is
+put on its own scale. A pooled rho that goes negative here is measuring the
+pooling, not the prior.
+
 ## Reproducing
 
 ```bash
@@ -269,10 +349,25 @@ python scripts/invariant_stats.py
 # 4. the depth probes: position, residue, centred prior
 python scripts/depth.py
 
-# 5. the ESM-2 probe (GPU; needs a parent-sequence index)
-python scripts/esm_context.py --index <DMS_substitutions.csv>
+# 5. does a stronger baseline close the gap? (per-position and rank-k
+#    position-pair terms, out-of-fold, each against its own permutation null)
+python scripts/alt_baseline.py --n-perm 10 --workers 8
 
-# 6. the claim audit, then the tests
+# 6. the held-out checks: one lab or many, and the assays excluded by size
+python scripts/heldout.py
+
+# 7. why a pooled rho across assays is not a within-assay rho
+python scripts/prior_units.py
+
+# 8. the ESM-2 probe (GPU; needs a parent-sequence index). esm_context.py is the
+#    original 4.4% probe kept for comparison; esm_scale.py is the corpus-scale run
+#    with three heads and a 100% sensitivity pass
+python scripts/esm_context.py --index <DMS_substitutions.csv>
+python scripts/esm_scale.py --max-per-assay 50000 --sensitivity-caps 0
+
+# 9. the figures, then the claim audit and the tests (figures write the r values
+#    the README quotes, so they run before the audit)
+python scripts/make_figures.py
 python scripts/audit_claims.py
 pytest tests/
 ```
@@ -282,10 +377,13 @@ as well as on a broken function.
 
 ## Limits, stated plainly
 
-- **Additivity is not the only null model.** A model that fits single-mutant
-  effects with a per-position term would beat plain additivity; this repo measures
-  the crudest baseline first, deliberately, because that is what a lab actually
-  uses when it "just adds the singles".
+- **Additivity is not the only null model — and now that is measured, not promised.**
+  The per-position and rank-k position-pair rows above are those stronger baselines.
+  They remove 38% of the residual variance and leave 62%, and they need 4/5 of the
+  assay's own measured doubles to do it, so they bound the gap rather than close it
+  for a lab that has singles only. A monotone global-epistasis fit (saturation, a
+  floor) was **not** run, so the position R² is not evidence of position-*specific*
+  epistasis, and whole position pairs were never held out.
 - **ProteinGym is not one experiment.** Assays differ in scale, saturation and
   what "fitness" means (fluorescence, growth, binding). The normalisation makes
   them comparable in *spread*, not in *meaning*; the per-assay table is the real
@@ -296,18 +394,26 @@ as well as on a broken function.
   (F7YBW8_MESOW_Ding_2023) covers only **30.2%** (26 of 86). An earlier draft of
   this README said "≥93.6% per assay", which the coverage column contradicts —
   caught by `scripts/audit_claims.py`.
-- **The ESM probe is one architecture, one feature set and one window size.** It
-  shows *this* model does not rank epistasis from context; it does not prove no
-  model can. A trained supervised model on matched data is the obvious next test,
-  and it was not run. The probe also uses 36,000 pairs (4.4% of the corpus) and
-  24 assays by size rank; the selection is reported in `results/esm_context.json`
-  rather than left implicit, but it is a sample, not the corpus.
+- **The ESM probe is three heads at corpus scale, still one architecture.**
+  `esm_scale.py` covers 39.0% of the corpus and a 100% sensitivity pass with three
+  heads, and no head beats its larger control at either size — so the null is no
+  longer a statement about a 4.4% sample or a single estimator. What it still does
+  not show is that no model can: one architecture (ESM-2 650M), one window size
+  (8 residues), wild-type sequence only, and a supervised model trained on matched
+  data remains the obvious untried test. Two further limits are recorded in the
+  artefact — overlapping windows for pairs closer than 17 residues mean heads (a)
+  and (c) do not fully separate window content from window overlap, and a
+  wild-type window is identical for every substitution pair at the same two
+  positions, so these features can rank position pairs but not the substitutions
+  within one.
 - **Every prior tested here is null, and that is the result.** The magnitude prior
   fails a construction-preserving permutation, residue identity does not replicate
   across assay halves, and ESM-2 context is indistinguishable from noise. A reader
   who came for "which pairs will break" should leave without an answer; what the
   repo establishes is the size of the gap (AUC 0.884 ranking, 12.6% of pairs
   beyond 2 sd, marked bias) and that three obvious ways to close it do not work.
+  The held-out section narrows even that: the ranking replicates out of sample and
+  the offset does not, so quote the AUC and not the 0.94 sd.
 - **`results/pairs/` is gitignored** (101 MB, reproducible). That used to mean a
   fresh clone could not check the pooled fraction and the audit had to announce
   reduced coverage. `assay_summary.csv` now carries the integer counts
@@ -324,15 +430,22 @@ as well as on a broken function.
 
 ```
 src/epsceil/pairs.py        mutation parsing, additivity residual, per-assay scaling
+src/epsceil/baseline.py     position and rank-k position-pair baselines
 scripts/build_pairs.py      every assay -> results/assay_summary.csv + pairs/
 scripts/rebuild_summary.py  per-assay summary from the pair tables alone
 scripts/prior.py            the magnitude prior + its permutation null
 scripts/invariant_stats.py  shift-invariant correlations, AUC, bias accounting
 scripts/depth.py            position, residue and centred-prior probes
-esm_context.py              the GPU probe, grouped CV by assay
+scripts/alt_baseline.py    stronger baselines, out-of-fold, with permutation nulls
+scripts/heldout.py          one-lab-in-the-corpus and size-excluded assays
+scripts/prior_units.py      within-assay vs pooled: what a rho is measured over
+esm_context.py              the GPU probe, grouped CV by assay (4.4% sample)
+scripts/esm_scale.py        corpus-scale ESM probe, three heads, two controls
 scripts/make_figures.py     figures from committed artefacts
 scripts/audit_claims.py     every README number against a committed artefact
 tests/                      invariants, estimator labels, the claim audit
+tests/test_alt_baseline.py  the stronger-baseline table's nulls and means
+tests/test_esm_scale.py     the ESM verdict rule and its controls
 ```
 
 MIT licence for this repository's own code. ProteinGym data keeps its own terms.

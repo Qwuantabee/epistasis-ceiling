@@ -61,3 +61,39 @@ def test_audit_never_reports_clean_when_a_claim_is_unverifiable():
     src = (ROOT / "scripts" / "audit_claims.py").read_text()
     assert "UNVERIFIED" in src, (
         "the audit must announce reduced coverage rather than implying a full pass")
+
+
+def test_esm_verdict_table_matches_the_artefact():
+    """The ESM verdict table states VERDICTS, not rho values.
+
+    scripts/audit_claims.py checks numbers; a verdict word is not a number, so
+    nothing mechanical stopped the README's two-column table from drifting away
+    from results/esm_scale.json. This closes that: every (head, sample size) pair
+    the page claims has to be the verdict the artefact recorded, or the page is
+    describing a run that did not happen.
+    """
+    import json
+    import re
+
+    scale_p = ROOT / "results" / "esm_scale.json"
+    if not scale_p.exists():
+        pytest.skip("no corpus-scale ESM artefact; run scripts/esm_scale.py")
+    d = json.loads(scale_p.read_text())
+    readme = (ROOT / "README.md").read_text()
+
+    primary = ((d.get("primary") or {}).get("heads")) or {}
+    full = (((d.get("sensitivity") or [{}])[0]).get("heads")) or {}
+    for hid, label in (("a", "(a) the shipped PCA(100)+RidgeCV estimator"),
+                       ("b", "(b) early-stopped linear on window embeddings, "
+                             "no interaction terms"),
+                       ("c", "(c) the free prior always present, ESM block on top")):
+        want_partial = (primary.get(hid) or {}).get("verdict", {}).get("verdict")
+        want_full = (full.get(hid) or {}).get("verdict", {}).get("verdict")
+        line = next((l for l in readme.splitlines() if l.startswith(f"| {label}")), None)
+        assert line is not None, f"the README no longer tabulates head {hid}"
+        assert want_partial and want_partial in line, (
+            f"head {hid}: README row does not state {want_partial!r}; the artefact "
+            f"recorded that verdict for the capped run")
+        assert want_full and want_full in line, (
+            f"head {hid}: README row does not state the full-corpus verdict "
+            f"{want_full!r}")
