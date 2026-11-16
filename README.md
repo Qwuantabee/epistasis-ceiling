@@ -32,7 +32,7 @@ assays dominate every aggregate number.
 |---|---|
 | assays with both singles and doubles | **65** |
 | pairs with both singles measured | **818,362** |
-| coverage of doubles by their singles | **≥93.6%** per assay |
+| coverage of doubles by their singles | **30.2%–100%**, median **98.5%** |
 | median assay Spearman (additive vs observed) | **0.760** |
 | median direction agreement (median split) | **0.693** |
 | pairs deviating >2 assay-sd from additive | **40.8%** |
@@ -53,10 +53,10 @@ the sign right:
 
 | correlation of \|residual\| with | median across 48 assays |
 |---|---|
-| **\|additive prediction\|** (how dramatic the singles look) | **−0.260** |
+| **\|additive prediction\|** (how dramatic the singles look) | **-0.260** |
 | signed additive prediction | +0.379 |
 | observed score | +0.041 |
-| sequence separation | −0.010 |
+| sequence separation | -0.010 |
 | *simulation null* (observed independent of predicted) | −0.001 ± 0.002 |
 
 **Additivity fails hardest where the singles look mild.** Splitting pairs by
@@ -76,7 +76,7 @@ contains `predicted` by construction — with the two independent, ρ is 0.001).
 Two probes, both with GroupKFold cross-validation **by protein** (pairs from one
 protein share a sequence and a scale, so a random split would leak):
 
-- **Distance alone**: ρ = −0.03, MAE worse than a constant by 0.086 sd. Nothing.
+- **Distance alone**: rho = -0.03, MAE worse than a constant by 0.086 sd. Nothing.
 - **ESM-2 (650M) context**, window embeddings of both mutated positions plus
   their difference, product and sequence separation — 5,121 features, 35,110
   pairs: ρ = **+0.064 ± 0.127**, MAE **worse** than a constant by 1.43 sd.
@@ -120,9 +120,11 @@ pytest tests/
   them comparable in *spread*, not in *meaning*; the per-assay table is the real
   result and the pooled numbers are summaries.
 - **Coverage is per assay, not global.** A double whose singles were never
-  measured is excluded, which biases toward the parts of sequence space the DMS
-  library happened to cover. 93.6%–100% coverage per assay makes this small but
-  not zero.
+  measured is excluded, which biases toward whatever the DMS library covered. The
+  median assay covers 98.5% of its doubles, but the range is wide and one assay
+  (F7YBW8_MESOW_Ding_2023) covers only **30.2%** (26 of 86). An earlier draft of
+  this README said "≥93.6% per assay", which the coverage column contradicts —
+  caught by `scripts/audit_claims.py`.
 - **The ESM probe is one architecture, one feature set and one window size.** It
   shows *this* model does not rank epistasis from context; it does not prove no
   model can. A trained supervised model on matched data is the obvious next test,
