@@ -48,5 +48,23 @@
     "null_expectation": 0.5,
     "verdict": "NOT_SUPPORTED",
     "note": "SUPPORTED means at least one residue is above its assay median in >=85% of assays where it appears, well beyond the 50% null."
+  },
+  "parent_prechecks": {
+    "note": "Attacks Run pre-emptively by the author before the reviewer round, because these are the two ways the headline could be manufactured rather than measured. Recompute them independently if distrusting.",
+    "normalisation_cannot_create_the_effect": {
+      "test": "recompute rho on residual_raw (unnormalised) vs residual (per-assay sd)",
+      "rho_abspred_raw_median": -0.26,
+      "rho_abspred_normalised_median": -0.26,
+      "max_abs_difference_across_assays": 0.0,
+      "conclusion": "A per-assay scalar cannot change a within-assay rank correlation. Confirmed exactly, not asserted."
+    },
+    "position_effect_is_not_a_count_artefact": {
+      "test": "does r2 relate to pairs-per-position or position count?",
+      "rho_r2_vs_pairs_per_position": 0.027,
+      "rho_r2_vs_n_positions": -0.055,
+      "median_excess_over_analytic_null": 0.127,
+      "assays_r2_above_5x_null": "44/48",
+      "conclusion": "No relationship to either count, so the 0.140 is clustering, not an artefact of how many pairs each position happens to have."
+    }
   }
 }

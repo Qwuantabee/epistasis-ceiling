@@ -93,6 +93,21 @@ negative rather than dropped.
 Neither probe explains away the earlier finding; they are different axes of the
 same residual.
 
+### Two ways this could have been manufactured, and why it wasn't
+
+Both were tested before the reviewer round, because each would have produced the
+findings above out of nothing:
+
+- **Per-assay normalisation.** Dividing each assay's residual by its own sd is a
+  scalar per assay, so it cannot change a within-assay rank correlation.
+  Recomputing on the raw residuals gives **-0.260 raw against -0.260 normalised**,
+  with a maximum difference of exactly 0.0 across all 48 assays. The normalisation
+  makes assays comparable in spread; it does not create the effect.
+- **Position clustering as a count artefact.** If a high r² simply meant "few
+  pairs per position", it would track position count. It does not: ρ = +0.027
+  against pairs-per-position and -0.055 against number of positions, and 44 of 48
+  assays still exceed five times the analytic null. The clustering is real.
+
 ## Can a protein language model do better?
 
 Two probes, both with GroupKFold cross-validation **by protein** (pairs from one

@@ -122,6 +122,21 @@ def build_claims() -> list[tuple[str, list[str], str]]:
             claims.append(("position assays",
                            [f"{h2['observed_exceeds_null_in']}/{h2['n_assays']}"],
                            "depth.json H2_position"))
+        pc = dj.get("parent_prechecks", {})
+        if pc:
+            nr = pc.get("normalisation_cannot_create_the_effect", {})
+            for key in ("rho_abspred_raw_median", "rho_abspred_normalised_median"):
+                if key in nr:
+                    v = nr[key]
+                    claims.append((f"precheck {key}", [f"{v:+.3f}", f"{v:.3f}"],
+                                   "depth.json parent_prechecks"))
+            pa = pc.get("position_effect_is_not_a_count_artefact", {})
+            for key, fmt in (("rho_r2_vs_pairs_per_position", "{:+.3f}"),
+                             ("rho_r2_vs_n_positions", "{:+.3f}")):
+                if key in pa:
+                    claims.append((f"precheck {key}",
+                                   [fmt.format(pa[key])],
+                                   "depth.json parent_prechecks"))
         h1 = dj.get("H1_residue", {})
         if h1.get("top"):
             top = sorted(h1["top"].items())[0][1]
