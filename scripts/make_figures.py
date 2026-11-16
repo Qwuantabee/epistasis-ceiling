@@ -43,71 +43,103 @@ def _footer(fig, text: str) -> None:
              ha="left", va="bottom", linespacing=1.35)
 
 
-def fig_ceiling() -> None:
-    """Two panels: the residual distribution, and the prior that predicts it."""
-    summ = pd.read_csv(RES / "assay_summary.csv")
-    prior = RES / "prior_pooled.json"
-    if not prior.exists():
-        print("  (skipping prior panel: run scripts/prior.py)")
-        pj = {}
-    else:
-        pj = json.loads(prior.read_text())
+PAIRS_HINT = ("needs the gitignored pair tables in results/pairs/: run "
+              "scripts/build_pairs.py first (README, Reproducing)")
 
-    # pooled residuals for the histogram
+
+def fig_ceiling() -> bool:
+    """Two panels, both on statistics that survive review round 2.
+
+    The earlier right panel ("Additivity fails where the singles look MILD",
+    rho -0.26) carried a claim the README withdrew because it fails its own
+    construction-preserving null, and the left panel's title headlined the pooled
+    40.9% under the median-of-all-variants centring. That centring puts the
+    assay's zero at an arbitrary place (results/reference.json: the bias flips
+    sign under wild type = 0), so both panels now show only quantities that are
+    invariant to it:
+
+      left  - the residual after removing each assay's own mean offset (the
+              centred residual), pooled over the 48 assays with >= 500 pairs;
+      right - each assay's threshold-free AUC, which no per-assay constant moves.
+
+    Returns False when the gitignored pair tables are absent, so main() can fail
+    loudly instead of silently skipping the headline figure.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT / "src"))
+    from epsceil.pairs import add_centred_columns
+
+    summ = pd.read_csv(RES / "assay_summary.csv")
+    big = summ[summ.n_pairs >= 500]
     frames = []
     for p in sorted((RES / "pairs").glob("*.csv")):
-        d = pd.read_csv(p, usecols=["residual"])
+        d = pd.read_csv(p, usecols=["residual", "predicted"])
         if len(d) >= 500:
-            frames.append(d)
+            frames.append(add_centred_columns(d)[["residual_c"]])
     if not frames:
-        print("  (skipping ceiling: no pair files)")
-        return
-    allres = pd.concat(frames, ignore_index=True).residual.to_numpy()
+        return False
+    res_c = pd.concat(frames, ignore_index=True).residual_c.to_numpy()
+    frac_c = float(np.mean(np.abs(res_c) > 2))
+    auc = np.sort(big.auc_direction.to_numpy(float))
+    med_auc = float(np.median(auc))
 
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10.6, 4.4),
                                   gridspec_kw=dict(width_ratios=[1.1, 1]))
-    ax.hist(np.clip(allres, -6, 6), bins=90, color="#4c72b0",
+    ax.hist(np.clip(res_c, -6, 6), bins=90, color="#4c72b0",
             edgecolor="none", alpha=0.9)
     for x in (-2, 2):
         ax.axvline(x, ls="--", lw=1.2, color="#d62728")
-    ax.set_xlabel("additivity residual (assay standard deviations)")
+    ax.set_xlabel("centred additivity residual (assay standard deviations)")
     ax.set_ylabel("double mutants")
-    ax.set_title(f"The additive shortcut's error\n"
-                 f"{len(allres):,} pairs, {np.mean(np.abs(allres) > 2):.1%} POOLED "
-                 f"beyond ±2 sd", fontsize=9.5)
+    ax.set_title(f"Residual after removing each assay's own offset\n"
+                 f"{len(frames)} assays, {len(res_c):,} pairs; {frac_c:.1%} "
+                 f"pooled beyond ±2 sd", fontsize=9.5)
     ax.set_xlim(-6, 6)
     ax.text(2.1, ax.get_ylim()[1] * 0.92, "±2 sd", color="#d62728", fontsize=7.5)
     ax.grid(axis="y", alpha=0.25)
 
-    terc = pj.get("median_abs_residual_by_additive_tercile", {})
-    if terc:
-        keys = ["small", "mid", "large"]
-        vals = [terc.get(k, np.nan) for k in keys]
-        ax2.bar(keys, vals, color=["#d62728", "#dd8452", "#55a868"],
-                edgecolor="black", linewidth=0.5)
-        for i, v in enumerate(vals):
-            ax2.text(i, v + 0.03, f"{v:.2f}", ha="center", fontsize=9)
-        ax2.set_ylabel("median |residual| (assay sd)")
-        ax2.set_xlabel("how dramatic the singles look\n(|additive prediction| tercile)")
-        ax2.set_title("Additivity fails where the singles look MILD\n"
-                      f"rho(|residual|, |prediction|) = "
-                      f"{pj.get('rho_abspred_absres_median', float('nan')):+.2f}",
-                      fontsize=9.5)
-        ax2.set_ylim(0, max(vals) * 1.18)
-        ax2.grid(axis="y", alpha=0.25)
+    ax2.scatter(np.arange(len(auc)), auc, s=22, color="#55a868",
+                edgecolor="black", linewidth=0.35, zorder=3)
+    ax2.axhline(med_auc, ls="--", lw=1.1, color="#333333")
+    ax2.axhline(0.5, ls=":", lw=1.0, color="#d62728")
+    ax2.text(0.5, med_auc + 0.012, f"median {med_auc:.3f}", fontsize=8)
+    ax2.text(0.5, 0.512, "chance", fontsize=7.5, color="#d62728")
+    ax2.set_ylim(0.45, 1.0)
+    ax2.set_xlabel(f"assays, sorted by AUC ({len(auc)} with >= 500 pairs)")
+    ax2.set_ylabel("AUC, additive prediction vs observed direction")
+    ax2.set_title(f"Additivity ranks doubles well\nmedian AUC {med_auc:.3f} "
+                  f"over {len(auc)} assays", fontsize=9.5)
+    ax2.grid(alpha=0.25)
 
-    _footer(fig, "Left: pooled additivity residuals across all assays with >=500 "
-                 "pairs, each residual divided by its own assay's residual sd "
-                 "(ProteinGym assays are not on a common scale). Right: pairs "
-                 "binned by |additive prediction| into terciles; a NEGATIVE "
-                 "correlation means the quietest singles produce the largest "
-                 "epistatic surprises. Simulation null for the left-panel width: "
-                 "rho 0.001 +- 0.002 when observed is independent of predicted.")
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    _footer(fig, "Left: additivity residuals pooled over the assays with >=500 "
+                 "pairs, each divided by its own assay's residual sd and with that "
+                 "assay's mean offset removed. The offset itself is not shown "
+                 "because its size and sign depend on where each assay's zero is "
+                 "put (median of all variants vs wild type = 0; "
+                 "results/reference.json). Right: each assay's threshold-free AUC, "
+                 "which no per-assay constant can move. The earlier 'fails where "
+                 "the singles look mild' panel is withdrawn: it failed its own "
+                 "construction-preserving null.")
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
     FIGS.mkdir(exist_ok=True)
     fig.savefig(FIGS / "ceiling.png", dpi=160)
     plt.close(fig)
-    print("  wrote figures/ceiling.png")
+
+    stats = RES / "figure_stats.json"
+    prev = json.loads(stats.read_text()) if stats.exists() else {}
+    prev["ceiling"] = {
+        "n_assays": int(len(frames)),
+        "n_pairs": int(len(res_c)),
+        "pooled_frac_beyond_2sd_centred": frac_c,
+        "median_auc": med_auc,
+        "provenance": "scripts/make_figures.py fig_ceiling()",
+        "source": "results/pairs/ (centred via epsceil.pairs.add_centred_columns) "
+                  "and results/assay_summary.csv, assays with >=500 pairs",
+    }
+    stats.write_text(json.dumps(prev, indent=2) + "\n")
+    print(f"  wrote figures/ceiling.png (centred beyond 2 sd {frac_c:.1%}, "
+          f"median AUC {med_auc:.3f})")
+    return True
 
 
 def fig_bias_not_spread() -> None:
@@ -184,8 +216,12 @@ def main() -> int:
     args = ap.parse_args()
     FIGS = Path(args.out)
     FIGS.mkdir(parents=True, exist_ok=True)
-    fig_ceiling()
+    # the summary-only figure first, so a clone without pair tables still gets it
     fig_bias_not_spread()
+    if not fig_ceiling():
+        print(f"figures/ceiling.png NOT rebuilt: make_figures.py {PAIRS_HINT}",
+              file=sys.stderr)
+        return 1
     return 0
 
 

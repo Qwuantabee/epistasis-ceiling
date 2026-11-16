@@ -6,5 +6,13 @@
     "reading": "share beyond 2 sd tracks |mean bias|, not residual spread",
     "provenance": "scripts/make_figures.py fig_bias_not_spread()",
     "source": "results/assay_summary.csv rows with >=500 pairs"
+  },
+  "ceiling": {
+    "n_assays": 48,
+    "n_pairs": 813014,
+    "pooled_frac_beyond_2sd_centred": 0.057879692108622975,
+    "median_auc": 0.8843817528883788,
+    "provenance": "scripts/make_figures.py fig_ceiling()",
+    "source": "results/pairs/ (centred via epsceil.pairs.add_centred_columns) and results/assay_summary.csv, assays with >=500 pairs"
   }
 }
