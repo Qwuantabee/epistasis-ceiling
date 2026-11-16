@@ -264,6 +264,9 @@ class NumpyBackend:
     def host32(self, a):
         return np.asarray(a, dtype=np.float32)
 
+    def eigh(self, A):
+        return np.linalg.eigh(A)
+
 
 class TorchBackend:
     """GPU arrays: fp32 per-chunk products, fp64 accumulation."""
@@ -309,6 +312,13 @@ class TorchBackend:
 
     def host32(self, a):
         return a.float().cpu().numpy()
+
+    def eigh(self, A):
+        """fp64 symmetric eigensolver on the GPU (1.2 s at 5,121 wide; the CPU
+        LAPACK path took minutes on the shared box)."""
+        w, V = self.torch.linalg.eigh(self.torch.as_tensor(
+            np.asarray(A, dtype=np.float64), device=self.device))
+        return w.cpu().numpy(), V.cpu().numpy()
 
 
 # ------------------------------------------------------------- features ---------
@@ -409,15 +419,14 @@ def standard_scale(n, S):
     return sigma
 
 
-def pca_from_scatter(n, S, k):
+def pca_from_scatter(n, S, k, eigh=np.linalg.eigh):
     """StandardScaler + PCA(k) of the training rows from their scatter matrix."""
-    from scipy.linalg import eigh
     sigma = standard_scale(n, S)
     R = S / n / np.outer(sigma, sigma)
     d = R.shape[0]
     k = int(min(k, d, n - 1))
-    w, V = eigh(R, subset_by_index=[d - k, d - 1])
-    order = np.argsort(w)[::-1]
+    w, V = eigh(R)
+    order = np.argsort(w)[::-1][:k]
     return sigma, V[:, order], w[order]
 
 
@@ -441,7 +450,8 @@ def gd_filter(lam, eta, t):
     return out
 
 
-def early_stopped_linear(n_t, S_t, sxy_t, n_v, S_v, sxy_v, syy_v, steps=GD_STEPS):
+def early_stopped_linear(n_t, S_t, sxy_t, n_v, S_v, sxy_v, syy_v, steps=GD_STEPS,
+                         eigh=np.linalg.eigh):
     """Least squares by gradient descent, stopped on held-out-assay MSE.
 
     S_t, sxy_t: training scatter and cross-moment about the training means;
@@ -454,7 +464,7 @@ def early_stopped_linear(n_t, S_t, sxy_t, n_v, S_v, sxy_v, syy_v, steps=GD_STEPS
     D = np.outer(sigma, sigma)
     G, h = S_t / n_t / D, sxy_t / n_t / sigma
     Gv, hv, cv = S_v / n_v / D, sxy_v / n_v / sigma, syy_v / n_v
-    lam, U = np.linalg.eigh(G)
+    lam, U = eigh(G)
     lam = np.clip(lam, 0.0, None)
     eta = 1.0 / float(lam.max())
     a = U.T @ h
@@ -530,7 +540,7 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
             s = src[("full", mode)]
             n_tr, mu = stream_mean(s, trm)
             _, S, _, _ = stream_scatter(s, trm, mu)
-            sigma, V, ev = pca_from_scatter(n_tr, S, n_components)
+            sigma, V, ev = pca_from_scatter(n_tr, S, n_components, eigh=be.eigh)
             del S
             Z = stream_project(s, everything, mu, V / sigma[:, None])
             pred, alpha = ridge_predict(Z[tr], y_tr, Z[te])
@@ -549,7 +559,8 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
             ybar = float(ylog[inner].mean())
             n_t, S_t, sxy_t, _ = stream_scatter(s, inner, mu, ylog, ybar)
             n_v, S_v, sxy_v, syy_v = stream_scatter(s, val, mu, ylog, ybar)
-            w, info = early_stopped_linear(n_t, S_t, sxy_t, n_v, S_v, sxy_v, syy_v)
+            w, info = early_stopped_linear(n_t, S_t, sxy_t, n_v, S_v, sxy_v, syy_v,
+                                           eigh=be.eigh)
             del S_t, S_v
             plog = ybar + stream_project(s, tem, mu, w[:, None])[:, 0]
             pred = np.clip(np.expm1(plog), 0.0, float(y_tr.max()))
