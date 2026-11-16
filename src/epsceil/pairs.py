@@ -82,9 +82,12 @@ def wt_reference(scores: pd.Series) -> float:
     the reference rather than an assumed zero: it is robust, and it makes the
     additivity baseline invariant to an additive shift in the assay.
 
-    (Using 0 instead would still give the same RESIDUALS - subtraction cancels the
-    constant - but it would shift `predicted` and make the plotted agreement
-    between predicted and observed depend on assay convention.)
+    (`wt` cancels out of the RESIDUAL only up to the fact that it sets where zero
+    sits: residual = observed - (a + b - wt), so d(residual)/d(wt) = +1. An
+    earlier version of this docstring claimed the constant cancels. It does not
+    cancel from the residual - every residual in the assay moves by exactly wt -
+    which is harmless for a correlation between two signed quantities but NOT
+    harmless for anything involving |residual|. See residual_c below.)
     """
     return float(np.median(scores.to_numpy()))
 
@@ -101,6 +104,24 @@ class AssayPairs:
     @property
     def coverage(self) -> float:
         return len(self.doubles) / max(self.n_doubles_total, 1)
+
+
+def add_centred_columns(t: pd.DataFrame) -> pd.DataFrame:
+    """Derive residual_c / predicted_c on a pair table loaded from disk.
+
+    results/pairs/ is gitignored and predates the centring fix, so every consumer
+    that reads a pair CSV calls this rather than trusting the file to have the
+    columns. One function, so the definition cannot drift between scripts.
+    """
+    if "residual_c" not in t.columns:
+        t = t.copy()
+        t["residual_c"] = t.residual - t.groupby("assay").residual.transform("mean") \
+            if "assay" in t.columns else t.residual - float(t.residual.mean())
+    if "predicted_c" not in t.columns:
+        t["predicted_c"] = (t.predicted
+                            - t.groupby("assay").predicted.transform("median")) \
+            if "assay" in t.columns else t.predicted - float(t.predicted.median())
+    return t
 
 
 def build_pairs(df: pd.DataFrame, assay: str,
@@ -150,24 +171,67 @@ def build_pairs(df: pd.DataFrame, assay: str,
     t["residual"] = t["residual_raw"] / sd if sd > 0 else t["residual_raw"]
     t["residual_scale_sd"] = sd
 
+    # CENTRE THE RESIDUAL. The additive baseline is identified only up to one
+    # constant per assay: wt is a convention, not a measurement, so the residual
+    # cloud can sit anywhere on the number line. That is invisible to a
+    # correlation between two signed variables and decisive for |residual|: the
+    # real data's cloud sits a median -0.94 assay-sd off zero, so a comparison of
+    # |residual| with |predicted| was comparing two distances from two different
+    # arbitrary origins. residual_c removes that one constant per assay, so a
+    # magnitude comparison is a comparison of spreads. residual is kept unchanged
+    # because the bias is itself a finding (doubles are systematically worse than
+    # additive) and nothing here hides it.
+    t["residual_c"] = t["residual"] - float(t["residual"].mean())
+    t["predicted_c"] = t["predicted"] - float(t["predicted"].median())
+
     return AssayPairs(assay=assay, doubles=t, singles=s_map, wt=wt,
                       n_singles_measured=len(s_map), n_doubles_total=len(doubles))
 
 
-def summarise(ap: AssayPairs) -> dict:
-    r = ap.doubles.residual.to_numpy()
+def direction_auc(pred: np.ndarray, obs: np.ndarray) -> float:
+    """Threshold-free direction accuracy: P(pred ranks a random high pair above a
+    random low pair), splitting observed at its median.
+
+    Why not a median split on both series: `predicted` is wider than
+    `observed` (sd ratio 1.39 median) and sits above the observed median 76% of
+    the time, so splitting both at the OBSERVED median puts most predictions on
+    one side and reports 0.693 where the rank information is worth 0.884. The
+    split statistic is kept for continuity but AUC is the honest number.
+    """
+    from scipy.stats import rankdata
+    y = (obs > np.median(obs)).astype(int)
+    n1, n0 = int(y.sum()), int((1 - y).sum())
+    if n1 == 0 or n0 == 0:
+        return float("nan")
+    rk = rankdata(pred)
+    return float((rk[y == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
+
+
+def summarise_table(t: pd.DataFrame, assay: str,
+                    coverage: float = float("nan"),
+                    n_singles: int = 0) -> dict:
+    """Per-assay summary from a pair table alone.
+
+    This exists so the summary can be rebuilt from results/pairs/*.csv without the
+    raw ProteinGym CSVs, and so the definition lives in ONE place: summarise()
+    and scripts/rebuild_summary.py both call it, and cannot drift apart.
+    """
     from scipy.stats import spearmanr
-    rho = float(spearmanr(ap.doubles.predicted, ap.doubles.observed).statistic)
-    med = float(np.median(ap.doubles.observed))
-    # direction agreement on a median split: does additivity at least rank the
-    # pair above/below the cohort median correctly?
+    r = t.residual.to_numpy()
+    rc = t.residual_c.to_numpy() if "residual_c" in t.columns else \
+        t.residual - float(t.residual.mean())
+    rho = float(spearmanr(t.predicted, t.observed).statistic)
+    med = float(np.median(t.observed))
+    pm = float(np.median(t.predicted.to_numpy()))
     agree = float(np.mean(
-        np.sign(ap.doubles.predicted - med) == np.sign(ap.doubles.observed - med)))
+        np.sign(t.predicted - med) == np.sign(t.observed - med)))
+    agree_own = float(np.mean(
+        np.sign(t.predicted - pm) == np.sign(t.observed - med)))
     return {
-        "assay": ap.assay,
-        "n_pairs": int(len(ap.doubles)),
-        "coverage": ap.coverage,
-        "n_singles_measured": ap.n_singles_measured,
+        "assay": assay,
+        "n_pairs": int(len(t)),
+        "coverage": coverage,
+        "n_singles_measured": n_singles,
         "residual_mean": float(r.mean()),
         "residual_sd": float(r.std(ddof=1)) if len(r) > 1 else float("nan"),
         "residual_median": float(np.median(r)),
@@ -175,12 +239,24 @@ def summarise(ap: AssayPairs) -> dict:
         "residual_p95": float(np.percentile(r, 95)),
         "spearman_additive": rho,
         "direction_agreement": agree,
-        # the headline: what fraction of pairs does additivity get right by more
-        # than a stated tolerance, in assay-sd units
-        # `r` is already in assay-sd units, so these are fractions of pairs whose
-        # additivity residual is within 0.5 / 1.0 sd of the assay's own spread.
+        "direction_agreement_own_medians": agree_own,
+        "auc_direction": direction_auc(t.predicted.to_numpy(),
+                                       t.observed.to_numpy()),
+        "bias_mean_sd": float(r.mean()),
+        "bias_median_sd": float(np.median(r)),
         "frac_within_0.5sd": float(np.mean(np.abs(r) <= 0.5)),
         "frac_within_1sd": float(np.mean(np.abs(r) <= 1.0)),
-        "residual_scale_sd": float(ap.doubles.residual_scale_sd.iloc[0]),
-        "residual_raw_sd": float(ap.doubles.residual_raw.std(ddof=1)),
+        "frac_within_1sd_centred": float(np.mean(np.abs(rc) <= 1.0)),
+        "frac_outside_2sd": float(np.mean(np.abs(r) > 2.0)),
+        "frac_outside_2sd_centred": float(np.mean(np.abs(rc) > 2.0)),
+        "residual_scale_sd": float(t.residual_scale_sd.iloc[0])
+        if "residual_scale_sd" in t.columns else float("nan"),
+        "residual_raw_sd": float(t.residual_raw.std(ddof=1))
+        if "residual_raw" in t.columns else float("nan"),
     }
+
+
+def summarise(ap: AssayPairs) -> dict:
+    """Per-assay summary, delegating to summarise_table so the two cannot drift."""
+    return summarise_table(ap.doubles, ap.assay, ap.coverage,
+                           ap.n_singles_measured)

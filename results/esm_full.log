@@ -1,0 +1,18 @@
+start 2026-11-16T04:00:32-06:00
+36,000 pairs from 24 assays, 1500 cap each
+selection: {"assays_available_over_300_pairs": 59, "pairs_available": 817120, "assays_used": 24, "pairs_used": 36000, "fraction_of_available": 0.04405717642451537, "rule": "assays ranked by pair count, descending; capped per assay"}
+Loading weights:   0%|          | 0/534 [00:00<?, ?it/s]Loading weights:   3%|▎         | 16/534 [00:00<00:26, 19.88it/s]Loading weights: 100%|██████████| 534/534 [00:00<00:00, 656.86it/s]
+[transformers] [1mEsmModel LOAD REPORT[0m from: facebook/esm2_t33_650M_UR50D
+Key                       | Status     | 
+--------------------------+------------+-
+lm_head.layer_norm.weight | UNEXPECTED | 
+lm_head.layer_norm.bias   | UNEXPECTED | 
+lm_head.bias              | UNEXPECTED | 
+lm_head.dense.weight      | UNEXPECTED | 
+lm_head.dense.bias        | UNEXPECTED | 
+pooler.dense.weight       | MISSING    | 
+pooler.dense.bias         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.

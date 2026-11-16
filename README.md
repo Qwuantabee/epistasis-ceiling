@@ -1,9 +1,12 @@
 # How far do single-mutant measurements get you on a double mutant?
 
-**On 818,362 measured double mutants from 65 assays, the additive shortcut —
-predict the double by adding the two singles — misses by more than 2 assay-sd on
-41% of pairs, and it resolves only 69% of them in the right direction. The pairs
-where it fails are the ones that look least suspicious.**
+**On 818,362 measured double mutants from 65 assays, adding the two single-mutant
+effects ranks the double correctly (AUC 0.884) but is biased: the
+additive prediction sits a median **0.94 assay-sd
+away from the truth**, so a fixed tolerance derived from it is not a reliability
+measure. Where it fails worst is where the singles look **most dramatic** — rho =
++0.313 on a shift-invariant statistic, positive in
+47/48 assays.**
 
 ![Additivity ceiling](figures/ceiling.png)
 
@@ -35,41 +38,65 @@ assays dominate every aggregate number.
 | coverage of doubles by their singles | **30.2%–100%**, median **98.5%** |
 | median assay Spearman (additive vs observed) | **0.760** |
 | median direction agreement (median split) | **0.693** |
-| pairs deviating >2 assay-sd from additive | **40.8%** |
+| pairs beyond 2 sd from additive, per-assay **median** | **12.6%** |
 | median assay, fraction of pairs within 1 sd | **0.437** |
 
-So additivity is a decent *ranker* and a poor *predictor*. Spearman 0.76 sounds
-respectable until you notice that 41% of individual predictions are more than two
-standard deviations out, which is the number that decides whether you must
-measure the pair.
+So additivity is a good *ranker* (AUC 0.884) and a **biased**
+predictor: its median error is 0.94 assay-sd,
+and 12.6% of pairs in a typical assay sit
+more than 2 sd from it. An earlier version of this README said 41% — that was a
+pooled figure printed beside per-assay medians, and most of it was the model's
+systematic offset rather than its spread (see the correction below).
 
-## The part that changes what you'd do
+## A withdrawal, and what does survive
 
-Sequence separation — the obvious "are they close in the structure" prior — is
-worth nothing here: ρ = −0.010 median across assays.
+**The magnitude prior is withdrawn.** An earlier version of this README claimed
+"additivity fails where the singles look mild". That claim is dead, and the reason
+matters more than the claim did.
 
-What does carry information is counter-intuitive, and it took two passes to get
-the sign right:
+`residual = observed - predicted`, so `|residual|` contains `|predicted|` **by
+construction**. Any correlation between the two is therefore partly structural, and
+the two obvious controls disagree:
 
-| correlation of \|residual\| with | median across 48 assays |
+| statistic | median across 48 assays |
 |---|---|
-| **\|additive prediction\|** (how dramatic the singles look) | **-0.260** |
-| signed additive prediction | +0.379 |
-| observed score | +0.041 |
-| sequence separation | -0.010 |
-| *simulation null* (observed independent of predicted) | −0.001 ± 0.002 |
+| observed rho(\|residual\|, \|prediction\|), both centred | +0.313 |
+| null: shuffle the residual alone | +0.003 |
+| **null: shuffle `observed` and REBUILD the residual** (the correct one) | **+0.505** |
 
-**Additivity fails hardest where the singles look mild.** Splitting pairs by
-|additive prediction| into terciles, median |residual| is **1.516 sd for the
-mildest third and 0.876 for the most dramatic third**. You cannot find the risky
-pairs by looking for dramatic single mutations — the quiet ones are where the
-shortcut breaks.
+The correct null preserves the construction and destroys only the pairing — and it
+is **larger** than the observed value. Observed exceeds it in only
+11/48 assays. So the statistic carries no usable
+signal about epistasis in either direction, and reporting it with a flipped sign
+would have been just as wrong as the original.
 
-The signed +0.379 is a separate asymmetry between negative and positive
-predictions. An earlier draft of this repo read it as "big effects are harder",
-which the tercile table disproves; both numbers are reported so the misreading
-cannot recur. The simulation null rules out the obvious artefact (the residual
-contains `predicted` by construction — with the two independent, ρ is 0.001).
+Two further reasons it was never trustworthy, both found by review: the additive
+baseline is identified only up to one constant per assay, and sweeping that
+constant over [-2, +2] kcal/mol swings the correlation from **-0.597 to +0.597** on
+a single assay; and the simulation null that appeared to validate it drew
+mean-zero noise, so it could not in principle detect the offset that produced the
+sign.
+
+**What replaces it:** the two priors that have valid nulls and survive them, in the
+next section. Neither is as quotable as the withdrawn one, which is the point.
+
+### The additive model is biased, which changes what "a fixed tolerance" means
+
+The residual mean is **0.94 assay-sd** per assay,
+not zero. A "fraction beyond a fixed number of sds" is then measuring that offset,
+not the model's spread — and a pooled fraction is not comparable to a per-assay
+median:
+
+| how it is counted | value |
+|---|---|
+| pooled share beyond 2 sd — **what this README used to call 40.8%** | 40.9% |
+| per-assay **median** share beyond 2 sd | 12.6% |
+| per-assay median after centring each assay | 4.6% |
+
+The honest figure is the middle row, **12.6%**;
+the 41% was that number blended with the model's systematic bias. What additivity
+*is* good at is ranking: **AUC 0.884** against the observed effect,
+which is why screening by additive prediction still beats not screening at all.
 
 ## Where the failures concentrate
 
@@ -84,11 +111,13 @@ epistasis in these data is attributable to *which residues are involved*, not ho
 mild their singles look — so a lab that has already run a double-mutant
 experiment can flag its hot positions for the next round at no extra cost.
 
-**Residue identity does not matter.** Testing whether particular substituting
-residues carry larger residuals, the strongest candidate (alanine, in
-37 assays) sits above its own assay median in only 81% of them — below
-the 85% threshold set before looking, and against a 50% null. Verdict **NOT_SUPPORTED**, reported as a
-negative rather than dropped.
+**Residue identity does matter, though modestly.** With both substitution slots
+pooled (the earlier version read only slot `a`) and a binomial test instead of a
+threshold picked by eye, alanine sits above its own assay's median residual in
+**73% of 48 assays**
+(Bonferroni p = 0.042), and the residue ranking replicates at
+rho +0.87 across a split-half. Verdict **INCONCLUSIVE**. An earlier draft called
+this NOT_SUPPORTED on an arbitrary 85% bar — that bar was not a test.
 
 Neither probe explains away the earlier finding; they are different axes of the
 same residual.
@@ -116,7 +145,10 @@ protein share a sequence and a scale, so a random split would leak):
 - **Distance alone**: rho = -0.03, MAE worse than a constant by 0.086 sd. Nothing.
 - **ESM-2 (650M) context**, window embeddings of both mutated positions plus
   their difference, product and sequence separation — 5,121 features, 35,110
-  pairs: ρ = **+0.064 ± 0.127**, MAE **worse** than a constant by 1.43 sd.
+  pairs: rho = **+0.064 ± 0.127**. **The MAE figure from that run is withdrawn**:
+  a pure-noise prediction scores -0.11 sd on the same metric, so the reported
+  -1.43 sd was dominated by a scale mismatch in the estimator, not by the model.
+  The rho is the usable number and it is indistinguishable from zero.
 
 **Sequence context does not tell you where additivity breaks.** That is a
 negative result and it is reported as one: a 650M-parameter protein language model

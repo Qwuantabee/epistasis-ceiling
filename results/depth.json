@@ -1,70 +1,151 @@
 {
   "n_pairs": 813014,
   "n_assays": 48,
+  "H3_magnitude_prior_centred": {
+    "n_assays": 48,
+    "rho_repo_median": -0.2602835096298011,
+    "rho_repo_positive_assays": 16,
+    "rho_centred_median": 0.32806614331076145,
+    "rho_centred_positive_assays": 48,
+    "permutation_null_centred_median": 0.5073525510774661,
+    "permutation_null_centred_ci95": [
+      0.2934109962928955,
+      0.6914968546296351
+    ],
+    "permutation_null_centred_positive_assays": 144,
+    "permutation_null_reps": 144,
+    "observed_centred_minus_null": -0.17928640776670468,
+    "bias_mean_sd_median": -0.9381523839258121,
+    "assays_median_predicted_off_origin": 43,
+    "rho_by_bias_bin": {
+      "(-1.0, 0.25]": {
+        "n_assays": 5,
+        "rho_repo_median": 0.057799181813611156
+      },
+      "(0.25, 0.75]": {
+        "n_assays": 11,
+        "rho_repo_median": -0.037370049443917884
+      },
+      "(0.75, 1.5]": {
+        "n_assays": 20,
+        "rho_repo_median": -0.4690114069815129
+      },
+      "(1.5, 99.0]": {
+        "n_assays": 12,
+        "rho_repo_median": -0.2555120200128215
+      }
+    },
+    "verdict": "NOT_SUPPORTED",
+    "claim_under_test": "|residual| is largest where the singles look mild",
+    "why": "Both parametrisations fail, in opposite directions. On the raw residual the statistic is -0.260 but the additive baseline is identified only up to one constant per assay and the cloud sits a median -0.94 sd off zero, so the sign tracks where zero sits: it appears only in assays that are offset (rho -0.469 where |bias| is 0.75-1.5 sd, +0.058 where it is under 0.25). On the CENTRED residual the statistic is +0.328 in 48/48 assays - but its within-assay permutation null is +0.503, i.e. the observed value is BELOW what independence between the singles and the double already produces, because `predicted` is subtracted to form the residual and large |predicted| mechanically inflates |residual|. So the centred number is dominated by that coupling and cannot be read as 'dramatic pairs fail harder' either. Neither direction is established; the honest report is that a correlation between |residual| and |predicted| is not, on these data, a usable prior.",
+    "what_would_settle_it": "A statistic that removes the mechanical term rather than a different origin for it - e.g. regressing |residual| on |predicted| and on the permutation-invariant coupling term, or comparing each pair to a simulated double built from resampled singles in the same assay."
+  },
   "H2_position": {
     "n_assays": 48,
     "observed_r2_median": 0.14037611306787798,
     "permutation_null_median": 0.002176259164762807,
     "analytic_null_median": 0.0019479233227093172,
     "observed_exceeds_null_in": 47,
-    "verdict": "SUPPORTED"
+    "positions_per_assay_median": 4.0,
+    "positions_per_assay_min": 2,
+    "positions_per_assay_max": 232,
+    "assays_with_only_2_positions": 11,
+    "r2_by_position_count": {
+      "(1,2]": {
+        "n_assays": 11,
+        "r2_median": 0.11327894527181302
+      },
+      "(2,5]": {
+        "n_assays": 18,
+        "r2_median": 0.18888665411505207
+      },
+      "(5,20]": {
+        "n_assays": 5,
+        "r2_median": 0.1746717027420215
+      },
+      "(20,60]": {
+        "n_assays": 6,
+        "r2_median": 0.05437305783281243
+      },
+      "(60,1000]": {
+        "n_assays": 8,
+        "r2_median": 0.09080918051115136
+      }
+    },
+    "observed_r2_demeaned_median": 0.0915588298993843,
+    "single_mutation_r2_median_slot_a": 0.34329019117751347,
+    "single_mutation_r2_median_slot_b": 0.3790405982329175,
+    "hot_decile_position_pair_coverage_median": 0.23147378358955573,
+    "hot_decile_position_pair_coverage_range": [
+      0.010403769155316857,
+      0.6733254994124559
+    ],
+    "verdict": "SUPPORTED",
+    "note": "SUPPORTED is judged on the CENTRED residual: the raw number 0.140 shrinks to ~0.09 once the assay's own bias is removed, and the bias is the confound reviewer F2 identified. The single-mutation R2 is a finer grouping and therefore an upper bound on how much is specifically about POSITION."
   },
   "H1_residue": {
     "n_residues_tested": 20,
+    "slots_pooled": [
+      "a",
+      "b"
+    ],
     "top": {
       "A": {
-        "n_assays": 37.0,
-        "frac_above_assay_median": 0.811,
-        "median_ratio": 1.036
+        "n_assays": 48.0,
+        "frac_above_assay_median": 0.7292,
+        "median_ratio": 1.0395,
+        "p_raw": 0.0021,
+        "p_bonferroni": 0.0418
       },
-      "K": {
-        "n_assays": 31.0,
-        "frac_above_assay_median": 0.677,
-        "median_ratio": 1.018
+      "S": {
+        "n_assays": 46.0,
+        "frac_above_assay_median": 0.6957,
+        "median_ratio": 1.0211,
+        "p_raw": 0.0114,
+        "p_bonferroni": 0.227
       },
-      "I": {
-        "n_assays": 37.0,
-        "frac_above_assay_median": 0.622,
-        "median_ratio": 1.013
+      "R": {
+        "n_assays": 45.0,
+        "frac_above_assay_median": 0.6667,
+        "median_ratio": 1.0167,
+        "p_raw": 0.0357,
+        "p_bonferroni": 0.714
       }
     },
     "bottom": {
+      "P": {
+        "n_assays": 41.0,
+        "frac_above_assay_median": 0.3171,
+        "median_ratio": 0.8982,
+        "p_raw": 0.0275,
+        "p_bonferroni": 0.5507
+      },
       "W": {
-        "n_assays": 30.0,
-        "frac_above_assay_median": 0.267,
-        "median_ratio": 0.957
+        "n_assays": 44.0,
+        "frac_above_assay_median": 0.3182,
+        "median_ratio": 0.9489,
+        "p_raw": 0.0226,
+        "p_bonferroni": 0.4526
       },
       "C": {
-        "n_assays": 30.0,
-        "frac_above_assay_median": 0.367,
-        "median_ratio": 0.973
-      },
-      "P": {
-        "n_assays": 27.0,
-        "frac_above_assay_median": 0.37,
-        "median_ratio": 0.96
+        "n_assays": 41.0,
+        "frac_above_assay_median": 0.3659,
+        "median_ratio": 0.9812,
+        "p_raw": 0.1173,
+        "p_bonferroni": 1.0
       }
     },
+    "n_residues_bonferroni_significant": 1,
+    "bonferroni_significant": [
+      "A"
+    ],
+    "split_half_rank_reliability": 0.5033230881594533,
+    "split_half_n_splits": 40,
+    "A_frac_above_before_magnitude_removal": 0.7291666666666666,
+    "A_frac_above_after_magnitude_removal": 0.5208333333333334,
     "null_expectation": 0.5,
-    "verdict": "NOT_SUPPORTED",
-    "note": "SUPPORTED means at least one residue is above its assay median in >=85% of assays where it appears, well beyond the 50% null."
-  },
-  "parent_prechecks": {
-    "note": "Attacks Run pre-emptively by the author before the reviewer round, because these are the two ways the headline could be manufactured rather than measured. Recompute them independently if distrusting.",
-    "normalisation_cannot_create_the_effect": {
-      "test": "recompute rho on residual_raw (unnormalised) vs residual (per-assay sd)",
-      "rho_abspred_raw_median": -0.26,
-      "rho_abspred_normalised_median": -0.26,
-      "max_abs_difference_across_assays": 0.0,
-      "conclusion": "A per-assay scalar cannot change a within-assay rank correlation. Confirmed exactly, not asserted."
-    },
-    "position_effect_is_not_a_count_artefact": {
-      "test": "does r2 relate to pairs-per-position or position count?",
-      "rho_r2_vs_pairs_per_position": 0.027,
-      "rho_r2_vs_n_positions": -0.055,
-      "median_excess_over_analytic_null": 0.127,
-      "assays_r2_above_5x_null": "44/48",
-      "conclusion": "No relationship to either count, so the 0.140 is clustering, not an artefact of how many pairs each position happens to have."
-    }
+    "multiple_testing": "Bonferroni over 20 residues",
+    "verdict": "INCONCLUSIVE",
+    "note": "Reported as INCONCLUSIVE, not SUPPORTED and not NOT_SUPPORTED, and the reason is in the numbers. One residue (A) clears Bonferroni at p~0.04, but its elevation does not survive two independent checks: the residue RANKING reproduces across independent assay halves at only rho~0.50 (chance), and A's fraction drops to ~0.52, i.e. to chance, once the magnitude relationship is regressed out within assay. So the marginal p-value is not evidence of residue-specific epistasis; it is the magnitude confound leaking through. The shipped claim 'residue identity does not matter' was also wrong - as a scientific conclusion it was based on a hand-set 85% bar. The defensible statement is: no residue shows a reproducible, magnitude-independent effect at this sample size."
   }
 }

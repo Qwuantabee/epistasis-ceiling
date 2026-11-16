@@ -4,19 +4,34 @@
   "rho_pred_absres_median": 0.3792346560348342,
   "rho_abspred_absres_median": -0.2602835096298011,
   "rho_abspred_absres_positive_assays": 16,
+  "rho_abspred_absres_centred_median": 0.32806614331076145,
+  "rho_abspred_absres_centred_positive_assays": 48,
+  "residual_mean_sd_median": -0.9381523839258121,
   "rho_pred_absres_positive_assays": 41,
   "rho_obs_absres_median": 0.04102214107443593,
   "rho_sep_absres_median": -0.009974239164077577,
-  "simulation_null": {
-    "mean": -0.0009624817770118004,
-    "sd": 0.002144112356721163,
-    "reps": 5,
-    "n": 60000
+  "permutation_null_centred": {
+    "median": 0.5085898616011539,
+    "ci95": [
+      0.29357651167673765,
+      0.6767835061027615
+    ],
+    "reps": 144,
+    "kind": "within-assay permutation of observed"
   },
+  "observed_centred_minus_null": -0.1805237182903925,
   "median_abs_residual_by_additive_tercile": {
     "small": 1.5157714760864733,
     "mid": 1.1639648645455383,
     "large": 0.8763471037247272
   },
-  "frac_strong_epistasis_median": 0.1261747972199645
+  "median_abs_residual_by_additive_tercile_centred": {
+    "small": 0.681139218811903,
+    "mid": 0.4893040003807224,
+    "large": 0.8325590268004337
+  },
+  "frac_strong_epistasis_median": 0.1261747972199645,
+  "frac_strong_epistasis_centred_median": 0.04559202434178068,
+  "prior_verdict": "NOT_SUPPORTED",
+  "prior_note": "Neither direction of the |residual| vs |predicted| relation is a usable prior. The raw statistic (-0.26) tracks where the per-assay centring constant put zero; the centred statistic (+0.33) sits BELOW its within-assay permutation null, because |residual| contains |predicted| by construction. Both are reported with the null rather than one being quoted alone."
 }

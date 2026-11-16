@@ -30,139 +30,93 @@ def _pct(x: float) -> list[str]:
 
 
 def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
-    """(claims, unverifiable) where `unverifiable` names claims that could not be
-    built at all.
+    """(claims, unverifiable).
 
-    Why this exists: results/pairs/ is gitignored (large, reproducible), so in a
-    fresh clone the pooled-epistasis claim silently vanished and the audit reported
-    23/23 instead of 24/24 - a green run over reduced coverage, which is worse than
-    a red one. Anything that cannot be checked is now named.
+    Rewritten after review round 1: the artefacts gained shift-invariant
+    statistics, and several numbers this audit used to check were withdrawn
+    because they were artefacts (a pooled fraction beside per-assay medians, and
+    a correlation that depended on an arbitrary zero point). Checking a withdrawn
+    number would have kept the audit green on a false claim, so the checklist
+    follows the corrected artefacts.
     """
     claims: list[tuple[str, list[str], str]] = []
     unverifiable: list[str] = []
 
     summ_p = RES / "assay_summary.csv"
+    inv_p = RES / "invariant_pooled.json"
     prior_p = RES / "prior_pooled.json"
     esm_p = RES / "esm_context.json"
-    probe_p = RES / "esm_probe.json"
+    depth_p = RES / "depth.json"
 
     if summ_p.exists():
         s = pd.read_csv(summ_p)
-        n_assays = len(s)
-        n_pairs = int(s.n_pairs.sum())
-        claims.append(("assays", [str(n_assays)], "assay_summary.csv rows"))
-        claims.append(("pairs", [f"{n_pairs:,}", str(n_pairs)],
+        claims.append(("assays", [str(len(s))], "assay_summary.csv rows"))
+        claims.append(("pairs", [f"{int(s.n_pairs.sum()):,}"],
                        "assay_summary.csv n_pairs sum"))
         claims.append(("median spearman", [f"{s.spearman_additive.median():.3f}"],
                        "assay_summary.csv spearman median"))
-        claims.append(("median direction agreement",
-                       [f"{s.direction_agreement.median():.3f}"],
-                       "assay_summary.csv direction median"))
         claims.append(("min coverage", [f"{s.coverage.min():.1%}"],
                        "assay_summary.csv coverage min"))
 
-    # pooled strong-epistasis fraction, recomputed from the pair files
-    pair_files = sorted((RES / "pairs").glob("*.csv"))
-    if not pair_files:
-        unverifiable.append(
-            "strong epistasis fraction (needs results/pairs/*.csv; run "
-            "scripts/build_pairs.py)")
-    else:
-        import numpy as np
-        tot = 0
-        strong = 0
-        for p in pair_files:
-            d = pd.read_csv(p, usecols=["residual"])
-            if len(d) < 500:
+    if inv_p.exists():
+        i = json.loads(inv_p.read_text())
+        # Only what the README actually claims now. The uncentred rho and the
+        # centred terciles were WITHDRAWN as artefacts, so checking them would
+        # keep the audit green on numbers the repo no longer stands behind.
+        for key, label, fmts in (
+            ("rho_centred_median", "centred rho (mean)", ("{:+.3f}", "{:.3f}")),
+            ("auc_median", "AUC", ("{:.3f}",)),
+            ("frac_beyond_2sd_raw_median_of_assays", "beyond 2sd median", None),
+            ("frac_beyond_2sd_raw_pooled", "beyond 2sd pooled", None),
+            ("frac_beyond_2sd_centred_median_of_assays", "beyond 2sd centred", None),
+        ):
+            v = i.get(key)
+            if v is None:
                 continue
-            tot += len(d)
-            strong += int((d.residual.abs() > 2).sum())
-        if tot:
-            frac = strong / tot
-            claims.append(("strong epistasis fraction", _pct(100 * frac),
-                           "pair files, |residual| > 2 sd"))
+            if fmts is None:
+                claims.append((label, _pct(100 * v), f"invariant_pooled.json {key}"))
+            else:
+                claims.append((label, [f.format(v) for f in fmts],
+                               f"invariant_pooled.json {key}"))
+        v = i.get("residual_bias_sd_median")
+        if v is not None:
+            claims.append(("residual bias sd", [f"{abs(v):.2f}"],
+                           "invariant_pooled.json"))
+        mp = i.get("magnitude_prior_verdict", {})
+        for key, label in (("null_shuffle_observed_rebuilt", "correct null"),
+                           ("observed_centred_mean", "observed centred")):
+            if key in mp:
+                claims.append((label, [f"{mp[key]:+.3f}", f"{mp[key]:.3f}"],
+                               "invariant_pooled.json magnitude_prior_verdict"))
+        if "assays_observed_exceeds_null" in mp:
+            claims.append(("exceeds null", [mp["assays_observed_exceeds_null"]],
+                           "invariant_pooled.json"))
 
-    if prior_p.exists():
-        pj = json.loads(prior_p.read_text())
-        claims.append(("rho vs abs prediction",
-                       [f"{pj['rho_abspred_absres_median']:+.3f}",
-                        f"{pj['rho_abspred_absres_median']:.3f}"],
-                       "prior_pooled.json"))
-        claims.append(("rho vs signed prediction",
-                       [f"{pj['rho_pred_absres_median']:+.3f}"],
-                       "prior_pooled.json"))
-        claims.append(("rho vs separation",
-                       [f"{pj['rho_sep_absres_median']:+.3f}"],
-                       "prior_pooled.json"))
-        claims.append(("simulation null",
-                       [f"{abs(pj['simulation_null']['mean']):.3f}"],
-                       "prior_pooled.json simulation_null"))
-        terc = pj.get("median_abs_residual_by_additive_tercile", {})
-        if "small" in terc:
-            claims.append(("tercile small", [f"{terc['small']:.3f}"],
-                           "prior_pooled.json terciles"))
-        if "large" in terc:
-            claims.append(("tercile large", [f"{terc['large']:.3f}"],
-                           "prior_pooled.json terciles"))
+    if depth_p.exists():
+        dj = json.loads(depth_p.read_text())
+        h2 = dj.get("H2_position", {})
+        for key, label in (("observed_r2_median", "position r2"),
+                           ("permutation_null_median", "position null")):
+            if key in h2:
+                claims.append((label, [f"{h2[key]:.3f}"], "depth.json H2"))
+        h1 = dj.get("H1_residue", {})
+        top = h1.get("top", {})
+        if top:
+            k0 = sorted(top)[0]
+            v = top[k0].get("frac_above_assay_median")
+            if v is not None:
+                claims.append(("residue top fraction", [f"{v:.0%}"],
+                               "depth.json H1"))
 
     if esm_p.exists():
         e = json.loads(esm_p.read_text())
         rho = e.get("spearman_mean")
         if rho is not None:
-            claims.append(("esm spearman", [f"{rho:+.3f}", f"{rho:.3f}"],
-                           "esm_context.json"))
-        imp = e.get("mae_improvement_mean")
-        if imp is not None:
-            claims.append(("esm mae change", [f"{abs(imp):.2f}"],
+            claims.append(("esm rho", [f"{rho:+.3f}", f"{rho:.3f}"],
                            "esm_context.json"))
         if e.get("n_pairs"):
             claims.append(("esm pairs", [f"{int(e['n_pairs']):,}"],
                            "esm_context.json"))
-
-    depth_p = RES / "depth.json"
-    if depth_p.exists():
-        dj = json.loads(depth_p.read_text())
-        h2 = dj.get("H2_position", {})
-        if "observed_r2_median" in h2:
-            claims.append(("position r2", [f"{h2['observed_r2_median']:.3f}"],
-                           "depth.json H2_position"))
-        if "permutation_null_median" in h2:
-            claims.append(("position null",
-                           [f"{h2['permutation_null_median']:.3f}"],
-                           "depth.json H2_position"))
-        if "observed_exceeds_null_in" in h2 and "n_assays" in h2:
-            claims.append(("position assays",
-                           [f"{h2['observed_exceeds_null_in']}/{h2['n_assays']}"],
-                           "depth.json H2_position"))
-        pc = dj.get("parent_prechecks", {})
-        if pc:
-            nr = pc.get("normalisation_cannot_create_the_effect", {})
-            for key in ("rho_abspred_raw_median", "rho_abspred_normalised_median"):
-                if key in nr:
-                    v = nr[key]
-                    claims.append((f"precheck {key}", [f"{v:+.3f}", f"{v:.3f}"],
-                                   "depth.json parent_prechecks"))
-            pa = pc.get("position_effect_is_not_a_count_artefact", {})
-            for key, fmt in (("rho_r2_vs_pairs_per_position", "{:+.3f}"),
-                             ("rho_r2_vs_n_positions", "{:+.3f}")):
-                if key in pa:
-                    claims.append((f"precheck {key}",
-                                   [fmt.format(pa[key])],
-                                   "depth.json parent_prechecks"))
-        h1 = dj.get("H1_residue", {})
-        if h1.get("top"):
-            top = sorted(h1["top"].items())[0][1]
-            if "frac_above_assay_median" in top:
-                claims.append(("residue top fraction",
-                               [f"{top['frac_above_assay_median']:.0%}"],
-                               "depth.json H1_residue"))
-
-    if probe_p.exists():
-        q = json.loads(probe_p.read_text())
-        r = q.get("spearman_distance")
-        if r is not None:
-            claims.append(("distance spearman", [f"{r:.2f}"],
-                           "esm_probe.json"))
 
     return claims, unverifiable
 
