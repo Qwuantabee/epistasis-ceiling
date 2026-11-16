@@ -187,37 +187,113 @@ def test_strict_mode_fails_on_an_unanchored_claim(audit_setup):
     assert not out["ok"] and out["unanchored"] == ["an unanchored claim"]
 
 
-def test_esm_verdict_table_matches_the_artefact():
-    """The ESM verdict table states VERDICTS, not rho values.
+ESM_ROWS = {"a": "(a) the shipped PCA(100)+RidgeCV estimator",
+            "b": "(b) early-stopped linear on window embeddings, no interaction terms",
+            "c": "(c) the free prior always present, ESM block on top"}
 
-    scripts/audit_claims.py checks numbers; a verdict word is not a number, so
-    nothing mechanical stopped the README's two-column table from drifting away
-    from results/esm_scale.json. This closes that: every (head, sample size) pair
-    the page claims has to be the verdict the artefact recorded, or the page is
-    describing a run that did not happen.
+
+def _esm_expected():
+    """{(head, run, rule): verdict} from the two committed artefacts."""
+    d = json.loads((ROOT / "results" / "esm_scale.json").read_text())
+    t = json.loads((ROOT / "results" / "esm_tcrit.json").read_text())
+    runs = {"primary": d["primary"], "full": d["sensitivity"][0]}
+    want = {}
+    for run, r in runs.items():
+        for hid in ESM_ROWS:
+            want[(hid, run, "2se")] = r["heads"][hid]["verdict"]["verdict"]
+            want[(hid, run, "t")] = t["cells"][f"{run}:{hid}"]["verdict_t"]
+            # the t column is a SECOND column, never a rewrite of the first
+            assert t["cells"][f"{run}:{hid}"]["verdict_2se_preregistered"] == \
+                want[(hid, run, "2se")]
+    fracs = {run: f"{100 * r['selection']['fraction_of_eligible_pairs']:.1f}%"
+             for run, r in runs.items()}
+    return want, fracs
+
+
+def _esm_table_problems(readme: str) -> list:
+    """Parse the ESM verdict table by its HEADER and compare cell by cell.
+
+    TEST-CHANGE (review round 2, code R2-04): the old test asserted 'want in
+    line' over a whole row, so swapping a row's two verdict columns, swapping the
+    headers, or parking the true words in a spare cell all passed, and an artefact
+    verdict SUPPORTED was satisfied by a README cell saying NOT_SUPPORTED. Each
+    column is now bound to its header (sample size and rule) and each cell must
+    EQUAL the artefact's verdict for that head, run and rule.
     """
-    import json
-    import re
+    want, fracs = _esm_expected()
+    # "100.0%" is printed as "100%"; any other share keeps its one decimal
+    run_of = {}
+    for k, v in fracs.items():
+        run_of[v] = k
+        run_of[v.replace(".0%", "%")] = k
+    lines = readme.splitlines()
+    hi = next((i for i, l in enumerate(lines) if l.startswith("| head |")), None)
+    if hi is None:
+        return ["the README no longer has the ESM verdict table"]
+    header = [c.strip() for c in lines[hi].strip().strip("|").split("|")]
+    cols = []
+    for h in header[1:]:
+        m = re.fullmatch(r"([\d.]+%) of corpus, (2·SE \(preregistered\)|t\(4\))", h)
+        if m is None or m.group(1) not in run_of:
+            return [f"unrecognised ESM column header {h!r}"]
+        cols.append((run_of[m.group(1)], "2se" if m.group(2).startswith("2") else "t"))
+    if sorted(cols) != sorted({(run, rule) for (_, run, rule) in want}):
+        return [f"the ESM table must have one column per (run, rule): {cols}"]
+    probs = []
+    seen = set()
+    for l in lines[hi + 2:]:
+        if not l.startswith("|"):
+            break
+        cells = [c.strip() for c in l.strip().strip("|").split("|")]
+        hid = next((k for k, v in ESM_ROWS.items() if cells[0] == v), None)
+        if hid is None:
+            probs.append(f"unknown ESM row {cells[0]!r}")
+            continue
+        seen.add(hid)
+        if len(cells) != len(header):
+            probs.append(f"head {hid}: {len(cells)} cells for {len(header)} columns")
+            continue
+        for (run, rule), got in zip(cols, cells[1:]):
+            exp = want[(hid, run, rule)]
+            if got != exp:
+                probs.append(f"head {hid}, {run} run, {rule}: README says {got!r}, "
+                             f"the artefact says {exp!r}")
+    probs += [f"the README no longer tabulates head {h}" for h in ESM_ROWS if h not in seen]
+    return probs
 
-    scale_p = ROOT / "results" / "esm_scale.json"
-    if not scale_p.exists():
-        pytest.skip("no corpus-scale ESM artefact; run scripts/esm_scale.py")
-    d = json.loads(scale_p.read_text())
+
+def test_esm_verdict_table_matches_the_artefact():
+    """The ESM verdict table states VERDICTS, not rho values: every (head, sample
+    size, rule) cell must be the verdict the artefacts recorded. A missing ESM
+    artefact FAILS this test (it used to skip, which kept CI green)."""
+    for name in ("esm_scale.json", "esm_tcrit.json"):
+        assert (ROOT / "results" / name).exists(), f"results/{name} is required"
     readme = (ROOT / "README.md").read_text()
+    assert _esm_table_problems(readme) == []
 
-    primary = ((d.get("primary") or {}).get("heads")) or {}
-    full = (((d.get("sensitivity") or [{}])[0]).get("heads")) or {}
-    for hid, label in (("a", "(a) the shipped PCA(100)+RidgeCV estimator"),
-                       ("b", "(b) early-stopped linear on window embeddings, "
-                             "no interaction terms"),
-                       ("c", "(c) the free prior always present, ESM block on top")):
-        want_partial = (primary.get(hid) or {}).get("verdict", {}).get("verdict")
-        want_full = (full.get(hid) or {}).get("verdict", {}).get("verdict")
-        line = next((l for l in readme.splitlines() if l.startswith(f"| {label}")), None)
-        assert line is not None, f"the README no longer tabulates head {hid}"
-        assert want_partial and want_partial in line, (
-            f"head {hid}: README row does not state {want_partial!r}; the artefact "
-            f"recorded that verdict for the capped run")
-        assert want_full and want_full in line, (
-            f"head {hid}: README row does not state the full-corpus verdict "
-            f"{want_full!r}")
+
+@pytest.mark.parametrize("how", ["swap a row's two columns", "swap two headers",
+                                 "SUPPORTED where the artefact says NOT_SUPPORTED",
+                                 "true words parked in a spare cell"])
+def test_esm_verdict_table_check_rejects_a_wrong_table(how):
+    """The check above must catch the four mutations the old test let through."""
+    readme = (ROOT / "README.md").read_text()
+    lines = readme.split("\n")
+    hi = next(i for i, l in enumerate(lines) if l.startswith("| head |"))
+    ra = next(i for i, l in enumerate(lines) if l.startswith("| " + ESM_ROWS["b"]))
+    cells = lines[ra].split("|")
+    if how == "swap a row's two columns":
+        cells[2], cells[3] = cells[3], cells[2]
+        lines[ra] = "|".join(cells)
+    elif how == "swap two headers":
+        h = lines[hi].split("|")
+        h[2], h[4] = h[4], h[2]
+        lines[hi] = "|".join(h)
+    elif how == "SUPPORTED where the artefact says NOT_SUPPORTED":
+        lines[ra] = lines[ra].replace("NOT_SUPPORTED", "SUPPORTED", 1)
+    else:
+        lines[ra] = lines[ra].rstrip() + " NOT_SUPPORTED INCONCLUSIVE |"
+        lines[ra] = lines[ra].replace("| NOT_SUPPORTED |", "| SUPPORTED |", 1)
+    mutated = "\n".join(lines)
+    assert mutated != readme
+    assert _esm_table_problems(mutated), f"the ESM table check passed: {how}"
