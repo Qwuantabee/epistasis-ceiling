@@ -1,0 +1,10 @@
+THIRD-PARTY DATA AND MODELS
+
+This repository's own code is MIT.
+
+* ProteinGym (Notin et al., 2023) - the DMS substitution tables used here. Check
+  the ProteinGym repository for its licence before redistribution; this repo does
+  not vendor the data, only derived pair tables rebuildable from it.
+* ESM-2 (facebook/esm2_t33_650M_UR50D, Lin et al. 2023) - model weights under the
+  Meta licence; used here read-only for a probe that failed to find signal.
+* UniProt - queried live for sequence dates, not redistributed.

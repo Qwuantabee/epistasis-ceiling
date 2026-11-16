@@ -1,0 +1,12 @@
+{
+  "n_pairs": 35110,
+  "n_assays": 20,
+  "features": "ESM-2 window embeddings (both positions) + abs-diff + product + log1p(sep)",
+  "cv": "GroupKFold(5) by assay",
+  "spearman_mean": 0.06435964644195316,
+  "spearman_sd": 0.12721988086099184,
+  "mae_improvement_mean": -1.4254840056540403,
+  "mae_improvement_sd": 0.7731695845808905,
+  "folds": 5,
+  "device": "cuda"
+}

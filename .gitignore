@@ -1,0 +1,6 @@
+# ProteinGym pairs are derived, large, and reproducible from the source data
+results/pairs/
+__pycache__/
+*.pyc
+.pytest_cache/
+.envs/

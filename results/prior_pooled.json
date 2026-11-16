@@ -1,0 +1,22 @@
+{
+  "n_assays": 48,
+  "n_pairs": 813014,
+  "rho_pred_absres_median": 0.3792346560348342,
+  "rho_abspred_absres_median": -0.2602835096298011,
+  "rho_abspred_absres_positive_assays": 16,
+  "rho_pred_absres_positive_assays": 41,
+  "rho_obs_absres_median": 0.04102214107443593,
+  "rho_sep_absres_median": -0.009974239164077577,
+  "simulation_null": {
+    "mean": -0.0009624817770118004,
+    "sd": 0.002144112356721163,
+    "reps": 5,
+    "n": 60000
+  },
+  "median_abs_residual_by_additive_tercile": {
+    "small": 1.5157714760864733,
+    "mid": 1.1639648645455383,
+    "large": 0.8763471037247272
+  },
+  "frac_strong_epistasis_median": 0.1261747972199645
+}

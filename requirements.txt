@@ -1,0 +1,9 @@
+numpy==2.4.2
+pandas==3.0.1
+scipy==1.18.0
+matplotlib==3.11.0
+scikit-learn==1.9.1
+# GPU probe only. Each model family goes in its own venv in practice
+# (transformers + torch conflict across projects); pinned to what was used.
+torch==2.13.0
+transformers==5.23.0

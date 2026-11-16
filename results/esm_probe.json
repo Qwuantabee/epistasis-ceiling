@@ -1,0 +1,11 @@
+{
+  "n_pairs": 48189,
+  "n_assays": 12,
+  "features": [
+    "log1p(sequence_separation)"
+  ],
+  "cv": "GroupKFold(5) by assay",
+  "spearman_distance": -0.02926182408328672,
+  "mae_improvement_over_constant": -0.08600730455367711,
+  "device": "cuda"
+}
