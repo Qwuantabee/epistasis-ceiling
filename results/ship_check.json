@@ -14,13 +14,13 @@
     {
       "check": "claim audit",
       "ok": true,
-      "detail": "18/18 claims found in the README",
+      "detail": "55/55 claims found in the README",
       "note": ""
     },
     {
       "check": "figure links resolve",
       "ok": true,
-      "detail": "1 distinct, missing=[]"
+      "detail": "2 distinct, missing=[]"
     },
     {
       "check": "no duplicate figure embeds",
@@ -45,8 +45,8 @@
     {
       "check": "no single file over 25 MB",
       "ok": true,
-      "detail": "38 tracked files; big=[]"
+      "detail": "42 tracked files; big=[]"
     }
   ],
-  "head": "0e3374b"
+  "head": "aa566e8"
 }
