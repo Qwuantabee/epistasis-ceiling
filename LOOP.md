@@ -23,8 +23,14 @@ So this loop is built differently:
    ranges once double-counted 2,400 conformers.
 2. **Ground truth over the ledger.** `scripts/loop_step.py` reads disk, never
    trust in `LOOP_STATE.json`.
-3. **A terminal state.** When every gate passes, the loop reports DONE and the
-   automation disables itself.
+3. **A terminal state.** When every gate passes, the loop reports DONE. The
+   script cannot disable its own scheduler entry, so DONE means: the runner
+   disables the automation. A DONE fire does no further work.
+3b. **A fire that cannot finish its step must leave a resumable tree.** FIX /
+   REDTEAM can exceed one fire's wall clock. Commit partial progress before the
+   fire ends; the next fire re-reads disk and resumes from what exists. An
+   uncommitted tree plus a timeout is a lost fire, and that is what cost two
+   consecutive runs on 2026-11-16.
 4. **Claim verification is a step, not a habit.** `scripts/audit_claims.py` checks
    every number in the README against a committed CSV. Nothing ships on prose.
 5. **A reviewer that must find something.** Each review round names at least one
