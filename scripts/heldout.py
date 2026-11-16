@@ -113,15 +113,29 @@ def boot_diff_median(a: np.ndarray, b: np.ndarray, reps: int = 20000,
             "p_two_sided": float(min(1.0, p))}
 
 
-def verdict(corpus: float, lo: float, hi: float, n: int, spread: float) -> str:
-    """Apply VERDICT_RULE literally."""
-    if n < 8 or not np.isfinite(lo):
+def verdict(corpus: float, lo: float, hi: float, n: int, effect: float) -> str:
+    """Apply VERDICT_RULE literally.
+
+    `effect` is the group's OWN median — the size of the thing being claimed. The
+    previous version took a `spread` argument that its only caller passed as
+    ``hi - lo``, so the "interval wider than the effect" branch compared the width
+    against twice the width and could therefore never fire. That was dead code, and
+    it meant the rule stated in VERDICT_RULE was not the rule actually applied.
+    """
+    width = hi - lo
+    if n < 8 or not np.isfinite(lo) or not np.isfinite(effect):
         return "INCONCLUSIVE"
-    if np.isfinite(spread) and (hi - lo) > 2 * abs(spread):
+    # The interval is wider than the effect it is meant to establish: agreement
+    # with the corpus and agreement with zero cannot be told apart.
+    if np.isfinite(width) and abs(effect) > 0 and width > 2 * abs(effect):
+        return "INCONCLUSIVE"
+    # Interval spanning zero AND containing the corpus median: the group is
+    # compatible both with no effect and with the corpus value.
+    if lo <= 0.0 <= hi and lo <= corpus <= hi:
         return "INCONCLUSIVE"
     if lo <= corpus <= hi:
-        return "SUPPORTED" if np.sign(np.median([lo, hi])) == np.sign(corpus) \
-            or corpus == 0 else "INCONCLUSIVE"
+        return "SUPPORTED" if (np.sign(np.median([lo, hi])) == np.sign(corpus)
+                               or corpus == 0) else "INCONCLUSIVE"
     return "NOT_SUPPORTED"
 
 
@@ -136,7 +150,7 @@ def group_row(name: str, t: pd.DataFrame, corpus_vals: dict) -> dict:
         lo, hi = boot_median(v)
         out[key] = {"median": float(np.median(v)), "ci95": [lo, hi]}
         out.setdefault("verdict_vs_corpus", {})[key] = verdict(
-            corpus_vals[key], lo, hi, len(v), hi - lo)
+            corpus_vals[key], lo, hi, len(v), float(np.median(v)))
     return out
 
 

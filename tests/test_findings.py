@@ -117,3 +117,39 @@ def test_residue_verdict_uses_a_binomial_not_a_hand_set_bar():
     assert "binomtest" in src or "binom" in src.lower(), (
         "the residue verdict must quote a binomial p-value")
     assert "bonferroni" in src.lower()
+
+
+def test_heldout_verdict_width_branch_can_fire():
+    """The 'interval wider than the effect' rule must be reachable.
+
+    It was not. The only caller passed `spread = hi - lo`, so the test
+    `(hi - lo) > 2 * abs(spread)` asked whether the width exceeds twice the width
+    - impossible - and the branch was dead code. The rule stated in VERDICT_RULE
+    was therefore not the rule being applied, and a reader checking the artefact
+    against the docstring would have found them inconsistent.
+
+    The fix passes the group's own MEDIAN as the effect. This test pins both
+    directions: a wide interval around a small effect is INCONCLUSIVE, and the
+    same interval around a large effect is not.
+    """
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import heldout
+
+    # width 2.0 around an effect of 0.2 -> the interval is far wider than the
+    # claim, so agreement cannot be established.
+    assert heldout.verdict(corpus=0.9, lo=-0.8, hi=1.2, n=20,
+                           effect=0.2) == "INCONCLUSIVE"
+    # same interval, but the effect is large relative to its width and does not
+    # span zero: the corpus median sits inside, same sign -> SUPPORTED.
+    assert heldout.verdict(corpus=0.5, lo=1.0, hi=3.0, n=20,
+                           effect=2.0) == "NOT_SUPPORTED"
+    # the dead-code signature: passing the width as the effect must NOT silently
+    # behave as before, i.e. the function must be able to return INCONCLUSIVE for
+    # a wide interval.
+    wide = heldout.verdict(corpus=0.0, lo=-5.0, hi=5.0, n=20, effect=0.05)
+    assert wide == "INCONCLUSIVE", wide
+    # small groups stay inconclusive regardless
+    assert heldout.verdict(corpus=0.9, lo=0.8, hi=1.0, n=3,
+                           effect=9.0) == "INCONCLUSIVE"

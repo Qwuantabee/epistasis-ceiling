@@ -125,8 +125,8 @@
       ]
     },
     "verdict_vs_corpus": {
-      "bias_sd": "NOT_SUPPORTED",
-      "frac_outside_2sd": "SUPPORTED",
+      "bias_sd": "INCONCLUSIVE",
+      "frac_outside_2sd": "INCONCLUSIVE",
       "auc": "SUPPORTED"
     },
     "frac_outside_2sd": {
@@ -171,7 +171,7 @@
     "held_out_by": "size (< 500 pairs), not by lab",
     "bias_verdict_status": "WITHDRAWN: bias_sd depends on the centring convention; under wild type = 0 the Tsuboyama assays agree with the corpus (results/reference.json)",
     "reading": "Held out by SIZE, not by lab: 15 of the 17 are Tsuboyama, the lab behind most of the corpus, and 11 of them are among the 59 assays of the ESM probe. They are outside the three 48-assay medians only. The bias comparison is withdrawn: it compares centring constants (the median of all variants moves with the share of doubles in the library), and under wild type = 0 the small Tsuboyama assays replicate the big ones. Only the ranking comparison is convention-free; its verdict is the auc entry of verdict_vs_corpus.",
-    "verdict": "bias: NOT_SUPPORTED; ranking: SUPPORTED",
+    "verdict": "bias: INCONCLUSIVE; ranking: SUPPORTED",
     "hypothesis": "the published bias and ranking both hold out of sample",
     "verdict_SUPPORTED_means": "the held-out group's median agrees with the corpus median"
   },
