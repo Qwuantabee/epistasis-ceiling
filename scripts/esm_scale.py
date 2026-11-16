@@ -105,6 +105,14 @@ HEADS = {
           "[log1p|predicted_c| (standardised, outside the PCA), PCA(100) of the (a) "
           "block]; the prior-only arm is RidgeCV on the prior alone; incremental "
           "rho = rho(prior + block) - rho(prior), per fold"),
+    "c_posthoc": ("POST HOC, NOT PREREGISTERED - head (c) with the prior divided by "
+                  "its assay's sd of predicted_c before log1p (label-free: single-"
+                  "mutant predictions only). Added after the preregistered run showed "
+                  "the raw-unit prior's pooled training slope is negative: "
+                  "|predicted_c| is in raw assay units while the target is sd-scaled, "
+                  "so across assays the prior-only arm ranks pairs backwards inside "
+                  "assays where its own rho is positive. Judged by the same rule, "
+                  "reported beside - never instead of - head (c)"),
 }
 
 
@@ -499,10 +507,11 @@ def fold_metrics(pred, y_te, y_tr, groups_te):
 
 
 def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
-              chunk=4096, n_components=N_COMPONENTS, log=print):
+              chunk=4096, n_components=N_COMPONENTS, log=print, prior_alt_abs=None):
     """All three heads x (ESM, noise, shuffled) on the same folds.
 
     y: |centred residual|; prior_abs: |predicted_c|; groups: assay per pair.
+    prior_alt_abs: optional rescaled prior for the labelled post-hoc arm of (c).
     """
     N = len(y)
     perm = within_group_permutation(groups, seed)
@@ -515,6 +524,10 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
     ylog = np.log1p(y)
     rec = {"a": {m: [] for m in MODES}, "b": {m: [] for m in MODES},
            "c": {m: [] for m in MODES}, "prior_only": []}
+    prior2 = None if prior_alt_abs is None else np.log1p(np.abs(prior_alt_abs))
+    if prior2 is not None:
+        rec["c_posthoc"] = {m: [] for m in MODES}
+        rec["prior_only_posthoc"] = []
     from sklearn.model_selection import GroupShuffleSplit
     for k, (tr, te) in enumerate(folds):
         t0 = time.time()
@@ -526,6 +539,12 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
         pred, alpha = ridge_predict(pc[tr, None], y_tr, pc[te, None])
         rec["prior_only"].append({**fold_metrics(pred, y_te, y_tr, g_te),
                                   "alpha": alpha})
+        if prior2 is not None:
+            sd2 = prior2[tr].std()
+            pc2 = (prior2 - prior2[tr].mean()) / (sd2 if sd2 > 0 else 1.0)
+            pred, alpha = ridge_predict(pc2[tr, None], y_tr, pc2[te, None])
+            rec["prior_only_posthoc"].append({**fold_metrics(pred, y_te, y_tr, g_te),
+                                              "alpha": alpha})
         # inner validation split for head (b): 20% of the TRAINING assays
         gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=seed + k)
         itr, iva = next(gss.split(tr, groups=groups[tr]))
@@ -552,6 +571,11 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
             pred, alpha = ridge_predict(Zc_tr, y_tr, Zc_te)
             rec["c"][mode].append({**fold_metrics(pred, y_te, y_tr, g_te),
                                    "alpha": alpha})
+            if prior2 is not None:
+                pred, alpha = ridge_predict(np.hstack([pc2[tr, None], Z[tr]]), y_tr,
+                                            np.hstack([pc2[te, None], Z[te]]))
+                rec["c_posthoc"][mode].append(
+                    {**fold_metrics(pred, y_te, y_tr, g_te), "alpha": alpha})
             del Z, Zc_tr, Zc_te
             # head (b): early-stopped linear on [Ea, Eb]
             s = src[("pooled", mode)]
@@ -607,7 +631,8 @@ def _mean_se(x):
 
 def summarise(rec: dict) -> dict:
     out = {}
-    for h in ("a", "b", "c"):
+    heads = ("a", "b", "c") + (("c_posthoc",) if rec.get("c_posthoc") else ())
+    for h in heads:
         rho = {m: [f["rho"] for f in rec[h][m]] for m in MODES}
         within = {m: float(np.mean([f["rho_within_assay_mean"] for f in rec[h][m]]))
                   for m in MODES}
@@ -620,11 +645,16 @@ def summarise(rec: dict) -> dict:
                                             "shuffled": rho["shuffled"]}),
             "per_fold": rec[h],
         }
-    po = [f["rho"] for f in rec["prior_only"]]
-    out["c"]["rho_prior_only"] = _mean_se(po)
-    out["c"]["incremental_rho_over_prior"] = {
-        m: _mean_se(np.asarray(out["c"]["rho"][m]) - np.asarray(po)) for m in MODES}
-    out["c"]["prior_only_per_fold"] = rec["prior_only"]
+    for h, key in (("c", "prior_only"), ("c_posthoc", "prior_only_posthoc")):
+        if h not in out:
+            continue
+        po = [f["rho"] for f in rec[key]]
+        out[h]["rho_prior_only"] = _mean_se(po)
+        out[h]["rho_prior_only_within_assay_mean"] = float(np.mean(
+            [f["rho_within_assay_mean"] for f in rec[key]]))
+        out[h]["incremental_rho_over_prior"] = {
+            m: _mean_se(np.asarray(out[h]["rho"][m]) - np.asarray(po)) for m in MODES}
+        out[h]["prior_only_per_fold"] = rec[key]
     return out
 
 
@@ -805,6 +835,8 @@ def main(argv=None) -> int:
         prior_abs = np.abs(df.predicted_c.to_numpy(np.float64))
         groups = df.assay.to_numpy()
         lsep = np.log1p(df.sep.to_numpy(np.float64))
+        sdp = df.groupby("assay").predicted_c.transform("std").to_numpy(np.float64)
+        prior_alt_abs = prior_abs / np.where(np.isfinite(sdp) & (sdp > 0), sdp, 1.0)
         print(f"[cap {cap}] {len(df):,} pairs / {df.assay.nunique()} assays = "
               f"{sel['fraction_of_eligible_pairs']:.1%} of eligible pairs", flush=True)
         windows, ia, ib = window_ids(df, seqs, args.window)
@@ -820,7 +852,8 @@ def main(argv=None) -> int:
         rec = run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds,
                         seed=args.seed, chunk=args.chunk,
                         n_components=args.n_components,
-                        log=lambda s: print(s, flush=True))
+                        log=lambda s: print(s, flush=True),
+                        prior_alt_abs=prior_alt_abs)
         summ = summarise(rec)
         runs.append({
             "max_per_assay": cap if cap > 0 else None,
@@ -834,15 +867,19 @@ def main(argv=None) -> int:
             "heads": summ,
             "seconds": round(time.time() - t0, 1),
         })
-        for h in ("a", "b", "c"):
+        for h in ("a", "b", "c", "c_posthoc"):
             v = summ[h]["verdict"]
             print(f"  head {h}: rho {summ[h]['rho_mean']['esm']:+.4f} vs "
                   f"{v.get('control')} {v.get('control_mean', float('nan')):+.4f} -> "
                   f"{v['verdict']} (delta {v.get('delta', float('nan')):+.4f} "
                   f"+- 2x{v.get('se', float('nan')):.4f})", flush=True)
-        inc = summ["c"]["incremental_rho_over_prior"]
-        print("  incremental rho over prior: " + " ".join(
-            f"{m}={inc[m]['mean']:+.4f}+-{inc[m]['se']:.4f}" for m in MODES), flush=True)
+        for h in ("c", "c_posthoc"):
+            inc = summ[h]["incremental_rho_over_prior"]
+            print(f"  {h} prior-only rho {summ[h]['rho_prior_only']['mean']:+.4f} "
+                  f"(within-assay {summ[h]['rho_prior_only_within_assay_mean']:+.4f}); "
+                  "incremental rho over prior: " + " ".join(
+                      f"{m}={inc[m]['mean']:+.4f}+-{inc[m]['se']:.4f}" for m in MODES),
+                  flush=True)
 
     primary = runs[0]
     shipped = None
@@ -899,6 +936,12 @@ def main(argv=None) -> int:
                          for h in ("a", "b", "c")},
             "incremental_rho_of_esm_over_prior":
                 primary["heads"]["c"]["incremental_rho_over_prior"]["esm"]["mean"],
+            "post_hoc_not_preregistered": {
+                "c_posthoc_verdict": primary["heads"]["c_posthoc"]["verdict"]["verdict"],
+                "incremental_rho_of_esm_over_rescaled_prior": primary["heads"][
+                    "c_posthoc"]["incremental_rho_over_prior"]["esm"]["mean"],
+                "why": HEADS["c_posthoc"],
+            },
         },
         "primary": primary,
         "sensitivity": runs[1:],

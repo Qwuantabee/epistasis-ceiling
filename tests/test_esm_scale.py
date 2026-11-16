@@ -204,6 +204,47 @@ def test_pipeline_calls_no_signal_when_there_is_none():
         assert out[h]["verdict"]["verdict"] != "SUPPORTED", (h, out[h]["verdict"])
 
 
+def test_post_hoc_arm_is_reported_beside_c_not_instead_of_it():
+    from sklearn.model_selection import GroupKFold
+    y, prior_abs, groups, W, ia, ib, lsep = _synthetic(True)
+    folds = list(GroupKFold(n_splits=5).split(np.zeros(len(y)), groups=groups))
+    rec = es.run_heads(y, prior_abs, groups, W, ia, ib, lsep, es.NumpyBackend(),
+                       folds, seed=0, chunk=256, log=lambda s: None,
+                       prior_alt_abs=prior_abs * 3.0)
+    out = es.summarise(rec)
+    assert set(out) == {"a", "b", "c", "c_posthoc"}
+    assert out["c_posthoc"]["head"].startswith("POST HOC")
+    # a constant rescale of the prior is the same prior: the arms must agree
+    assert np.allclose(out["c"]["rho"]["esm"], out["c_posthoc"]["rho"]["esm"], atol=0.02)
+
+
+def test_raw_unit_prior_ranks_backwards_when_assay_units_differ():
+    """Why c_posthoc exists. Inside every assay |residual| rises with |predicted|,
+    but the assays with large raw units have small sd-scaled residuals, so one
+    pooled slope on the raw prior is negative and ranks each assay backwards;
+    dividing by the assay's own sd of predicted (label-free) restores it."""
+    from sklearn.model_selection import GroupKFold
+    rng = np.random.default_rng(4)
+    groups, raw, y = [], [], []
+    for g in range(10):
+        level = g % 5
+        z = np.abs(rng.normal(size=300))
+        raw.append(z * 10.0 ** level)
+        y.append(np.exp(0.8 * z - 0.6 * level + 0.3 * rng.normal(size=300)))
+        groups += [f"A{g}"] * 300
+    raw, y, groups = np.concatenate(raw), np.concatenate(y), np.array(groups)
+    sd = pd.Series(raw).groupby(groups).transform("std").to_numpy()
+    within = {}
+    for name, prior in (("raw", np.log1p(raw)), ("rescaled", np.log1p(raw / sd))):
+        vals = []
+        for tr, te in GroupKFold(n_splits=5).split(raw, groups=groups):
+            pred, _ = es.ridge_predict(prior[tr, None], y[tr], prior[te, None])
+            vals.append(es.fold_metrics(pred, y[te], y[tr], groups[te])
+                        ["rho_within_assay_mean"])
+        within[name] = float(np.mean(vals))
+    assert within["raw"] < 0 < within["rescaled"]
+
+
 def test_selection_covers_every_eligible_assay_and_states_the_fraction(tmp_path):
     pairs = tmp_path / "pairs"
     pairs.mkdir()
@@ -250,13 +291,16 @@ def test_artefact_carries_the_scripts_rule_and_recomputes():
     assert math.isclose(sel["fraction_of_eligible_pairs"],
                         sel["pairs_used"] / sel["pairs_eligible"])
     assert doc["headline"]["pairs_used"] == sel["pairs_used"]
-    for h in ("a", "b", "c"):
+    for h in ("a", "b", "c", "c_posthoc"):
         H = p["heads"][h]
         assert all(len(H["rho"][m]) == 5 for m in es.MODES)
         v = es.verdict(H["rho"]["esm"], {"noise": H["rho"]["noise"],
                                          "shuffled": H["rho"]["shuffled"]})
-        assert v["verdict"] == H["verdict"]["verdict"] == doc["headline"]["verdicts"][h]
+        assert v["verdict"] == H["verdict"]["verdict"]
+        if h != "c_posthoc":                    # post hoc never enters the headline
+            assert v["verdict"] == doc["headline"]["verdicts"][h]
         assert math.isclose(v["delta"], H["verdict"]["delta"], abs_tol=1e-12)
+    assert set(doc["headline"]["verdicts"]) == {"a", "b", "c"}
     c = p["heads"]["c"]
     inc = np.array(c["rho"]["esm"]) - np.array(c["rho_prior_only"]["folds"])
     assert math.isclose(inc.mean(), doc["headline"]["incremental_rho_of_esm_over_prior"],
