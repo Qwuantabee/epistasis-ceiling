@@ -1,12 +1,14 @@
 # How far do single-mutant measurements get you on a double mutant?
 
-**On 818,362 measured double mutants from 65 assays, adding the two single-mutant
-effects ranks the double correctly — AUC 0.884 — but is biased: the additive
-residual sits a median **0.94 assay-sd off zero**, so "beyond 2 sd" mostly reports
-that offset rather than unreliability. Two candidate priors were tested and both
-**fail their own null**. The honest answer is that neither how dramatic the
-singles look nor which residues they involve tells you in advance where additivity
-breaks.**
+**On the 48 ProteinGym assays with at least 500 measured double mutants (813,014
+pairs), adding the two single-mutant effects ranks the double correctly — median
+AUC 0.884.** An earlier version also called the additive prediction biased by a
+median 0.94 assay-sd. That is withdrawn: the offset is set by where each assay's
+zero is put, not by additivity. For the 33 assays scored as a ΔΔG from wild type
+it reads -0.79 sd under the median centring this repo used and +1.15 sd under
+wild type = 0, positive in 33/33. Two candidate priors were tested and both
+**fail their own null**. The honest answer is that neither how dramatic the singles
+look nor which residues they involve tells you in advance where additivity breaks.
 
 ![Additivity ceiling](figures/ceiling.png)
 
@@ -24,8 +26,9 @@ For every double mutant whose two singles were also measured:
 residual = observed(double) − ( single_a + single_b − centre )
 ```
 
-`centre` is the assay's own median, so the baseline is invariant to an additive
-shift in the assay scale. Residuals are then divided by each assay's own residual
+`centre` is the median of every measured variant in the assay (not a measured
+wild type; see the section on the offset below), so the baseline is invariant to
+an additive shift in the assay scale. Residuals are then divided by each assay's own residual
 sd, because ProteinGym assays are **not** on a common scale — the Somermeyer
 deep-mutational scans report raw fluorescence in the thousands (residual sd up to
 6,098) against a median of 0.69 elsewhere. Pooling those raw would have let three
@@ -36,19 +39,23 @@ assays dominate every aggregate number.
 | assays with both singles and doubles | **65** |
 | pairs with both singles measured | **818,362** |
 | coverage of doubles by their singles | **30.2%–100%**, median **98.5%** |
-| median assay Spearman (additive vs observed) | **0.760** |
+| median assay Spearman (additive vs observed) | **0.763** |
 | median AUC (threshold-free direction) | **0.884** |
-| pairs beyond 2 sd from additive, per-assay **median** | **12.6%** |
+| pairs beyond 2 sd from additive, per-assay **median**, median centring | **12.6%** |
+| the same, each assay's own offset removed (convention-free) | **4.6%** |
 | median assay, fraction of pairs within 1 sd | **0.431** |
 
-Two denominators, stated once so no row is ambiguous: **coverage and the pair
-total use all 65 assays** (818,362 pairs), while **every correlation, AUC and
-fraction below uses the 48 assays with at least 500 pairs** (813,014 pairs). The
-17 small assays contribute 5,348 pairs between them and cannot move a median; the
-earlier version of this README silently mixed the two.
+Three denominators meet on this page, stated once here so no row is ambiguous:
+**coverage and the pair total use all 65 assays** (818,362 pairs); **every median
+— each correlation, AUC and fraction — uses the 48 assays with at least 500
+pairs** (813,014 pairs); and the **corpus-scale ESM probe uses 59 assays**, those
+with at least 300 pairs and a parent sequence (817,120 eligible pairs). The 17
+assays outside the 48 contribute 5,348 pairs between them and cannot move a
+median; the earlier version of this README silently mixed the first two.
 
-So additivity is a good *ranker* (AUC 0.884) and a **biased** predictor, which is
-not a contradiction: a monotone but offset predictor still ranks well. An earlier
+So additivity is a good *ranker* (AUC 0.884). Whether it is also an offset
+predictor cannot be read off these data, because the offset depends on the
+centring convention (see the section on the offset below). An earlier
 version said "41% of pairs miss by more than 2 sd" — that was a pooled figure
 printed beside per-assay medians, and most of it was the model's systematic offset
 rather than its spread.
@@ -87,8 +94,9 @@ reporting it with a flipped sign would have been just as wrong as the original.
 Median-centring instead of mean-centring gives +0.373, and the same verdict.
 
 Two further reasons it was never trustworthy: the additive baseline is identified
-only up to one constant per assay, and the residual cloud sits a median **0.94
-assay-sd from zero**, so the raw statistic tracks where zero was placed — it is
+only up to one constant per assay, and under the median centring the residual
+cloud sits a median **-0.94** assay-sd from zero, so the raw statistic tracks where
+zero was placed — it is
 -0.469 in assays offset 0.75–1.5 sd and +0.058 in assays offset under 0.25. And
 the simulation null that appeared to validate it drew mean-zero Gaussian noise,
 so it could not in principle detect the offset that produced the sign.
@@ -96,29 +104,41 @@ so it could not in principle detect the offset that produced the sign.
 **What replaces it:** the position and residue probes below. Neither closes the
 gap, and the section says how far each one gets.
 
-### The additive model is biased, which changes what "a fixed tolerance" means
+### The additive model's offset is a convention, which changes what "a fixed tolerance" means
 
-The residual mean is **0.94 assay-sd** per assay,
-not zero. A "fraction beyond a fixed number of sds" is then measuring that offset,
-not the model's spread — and a pooled fraction is not comparable to a per-assay
-median:
+The residual mean is not zero, but its size and its sign are set by where each
+assay's zero is put, not by additivity. This repo centres each assay on the median
+of all its measured variants; under that convention the median bias over the 48
+assays is **-0.94** sd. For the 33 assays whose score is a ΔΔG relative to wild
+type, the data carry their own reference, wild type = 0, and the same 33 assays
+read **-0.79** sd under the median centring (positive in **5/33**) against
+**+1.15** sd under wild type = 0 (positive in **33/33**). A number that flips sign
+with the choice of origin is not a finding about the model, so the "biased by
+0.94 sd" headline is withdrawn (`scripts/reference.py`, `results/reference.json`).
+The median of all variants moves with the share of doubles in each library, which
+is why it is a poor stand-in for wild type.
+
+What does not depend on the convention: AUC, and every statistic computed after
+removing each assay's own offset. A "fraction beyond a fixed number of sds" does
+depend on it, and a pooled fraction is not comparable to a per-assay median:
 
 | how it is counted | value |
 |---|---|
 | pooled share beyond 2 sd — **what this README used to call 40.8%** | 40.9% (332,751 / 813,014) |
-| per-assay **median** share beyond 2 sd | 12.6% |
+| per-assay **median** share beyond 2 sd, median centring | 12.6% |
+| per-assay median share beyond 2 sd, zero taken as wild type in every assay (exact for the 33 ΔΔG assays) | 21.0% |
 | per-assay median after centring each assay | 4.6% |
 | pooled share beyond 2 sd, centred | 5.8% |
 
-The honest figure is the middle row, **12.6%**;
-the 41% was that number blended with the model's systematic bias. What additivity
-*is* good at is ranking: **AUC 0.884** against the observed effect,
-which is why screening by additive prediction still beats not screening at all.
+The convention-free figure is the centred one, **4.6%**; 12.6% and 21.0% count the
+same pairs from two different zeros. What additivity *is* good at is ranking:
+**AUC 0.884** against the observed effect, which no per-assay constant can move,
+and which is why screening by additive prediction still beats not screening at all.
 
-The same argument, measured per assay rather than asserted pool-wide: across the
-48 assays the share past 2 sd correlates **+0.93** with how far that assay's
-additive prediction sits from zero, and only **+0.12** with its own residual
-spread.
+The same argument, measured per assay rather than asserted pool-wide: under the
+median centring, across the 48 assays the share past 2 sd correlates **+0.93**
+with how far that assay's additive prediction sits from zero, and only **+0.12**
+with its own residual spread.
 
 ![The tail tracks the offset, not the spread](figures/bias_not_spread.png)
 
@@ -127,35 +147,37 @@ would flag the assays where the model is shifted, not the pairs where it is wron
 
 ## Does any of it hold out of sample?
 
-Every number above is a median over 48 assays. Two things about that set were
-never tested, and both matter for anyone who wants to use these results.
+Every median above is over 48 assays. Two things about that set were never tested,
+and both matter for anyone who wants to use these results.
 
-**The corpus is one lab.** 48 of the 65 assays are Tsuboyama et al. (2023), a
-single study of stability measurements; the other 17 assays come from 13 papers.
-Within the 48-assay correlation subset that split is 33 against 15, and the bias is
-not one number: **-0.79** sd (95% CI -0.97 to
--0.35) for the 33 Tsuboyama assays against **-1.50** sd (-1.87 to -1.27) for the
-15 others, a difference of 0.76 sd with a bootstrap p of 0.0004. Both keep the sign
-and both rank well (AUC 0.839 against 0.941), so the *direction* replicates and the
-*magnitude* does not. The corpus median is a mixture description.
+**The corpus is mostly one lab.** 48 of the 65 assays are Tsuboyama et al. (2023),
+a single study of stability measurements; the other 17 assays come from 13 papers.
+Within the 48-assay subset that split is 33 against 15. Both groups rank well
+above chance, but not at one level: AUC **0.839** for the 33 Tsuboyama assays
+against **0.941** for the 15 others, and the artefact's own verdict for the other
+labs' AUC against the corpus median is **NOT_SUPPORTED** (their interval, 0.926 to
+0.956, excludes 0.884). Under the median centring the two groups' bias medians also
+differ, **-0.79** against **-1.50** sd (bootstrap p 0.0004), but that is a
+difference between centring constants rather than labs: the Tsuboyama median
+becomes +1.15 under wild type = 0, and the other labs' wild-type score is not in
+the data. Leave-one-lab-out moves the median AUC between 0.880 and 0.941, and the
+artefact's verdict is **INCONCLUSIVE**: dropping Tsuboyama alone moves it from
+0.884 to 0.941, outside the script's tolerance. What holds is the weaker
+statement: every lab family ranks doubles well above chance, and the level
+differs by lab family.
 
-**The 17 assays that were excluded agree about ranking and disagree about bias.**
-They were dropped for size — under 500 pairs, 5,348 pairs between them — which
-makes them the only genuinely out-of-sample check available without new data: they
-contributed nothing to any published number. Their median bias is **+0.50** sd
-(95% CI -0.84 to +1.01) against the corpus's -0.94, i.e. it does not replicate and
-even changes sign, while their ranking agrees (**AUC 0.848**, inside the corpus
-interval).
-
-The reading is the same in both tests, and it is narrower than the version of this
-page that came before them: **additivity ranks doubles well wherever you look, and
-its offset is assay-specific, not a constant you can subtract.** Anyone quoting
-"0.94 sd" as a property of the method is quoting one lab's calibration.
-
-Leave-one-lab-out confirms the split: dropping any single lab moves the AUC only
-between 0.880 and 0.941, so the ranking is a corpus property rather than one
-paper's, while the bias moves across the whole -1.50 to -0.90 range on the same
-test.
+**The 17 assays excluded for size are held out by size, not by lab.** They were
+dropped for having under 500 pairs (5,348 pairs between them), so they are outside
+the three 48-assay medians. But **15 of the 17** are Tsuboyama, the same lab as 33
+of the corpus assays, and **11 of the 17** are among the 59 assays of the ESM
+probe, so they are not outside every published number. Their ranking agrees with
+the corpus (**AUC 0.848**, interval 0.755 to 0.920 around the corpus 0.884;
+verdict SUPPORTED). An earlier version also reported that their bias "does not
+replicate and even changes sign" (+0.50 against -0.94). That is withdrawn: it
+compares centring constants — the median of all variants moves with the share of
+doubles in a library, and the small assays have fewer — and under wild type = 0
+the small Tsuboyama assays agree with the big ones. Anyone quoting "0.94 sd" as a
+property of the method is quoting a centring convention.
 
 ## Where the failures concentrate
 
@@ -225,27 +247,33 @@ per-pair prediction is made by a fit that never saw that pair (out-of-fold, inne
 KFold(5) within the assay), the threshold is the same 2 sd for every model, and each
 fitted model is compared to a permutation null of itself.
 
-| model | R² of residual var. (null) | AUC (null) | beyond 2 sd (null) | bias, sd |
+| model | R² of residual var. (null) | AUC (null) | beyond 2 sd (null) | bias, sd (median centring) |
 |---|---|---|---|---|
 | plain additivity (recomputed) | 0 | 0.884 | 12.6% | **-0.94** |
 | + one offset learned on the other assays | 0 | 0.884 | 6.7% | -0.07 |
 | + the assay's own offset | -0.001 | 0.884 | 4.6% | 0.00 |
 | + position | **0.333** (-0.001) | 0.903 (0.884) | 2.5% (4.6%) | 0.00 |
-| + position + position-pair rank 3 | **0.381** (-0.006) | **0.905** (0.884) | 2.5% (4.6%) | 0.00 |
+| + position + position-pair rank 3 | **0.381** (-0.006) | **0.905** (0.884) | 2.5% (4.5%) | 0.00 |
 
-Three things follow, and only one of them is a win for the stronger model.
+Three things follow, and none of them is position-specific epistasis.
 
-**The bias is one constant per assay, and that is the whole of it.** Removing a
-single offset per assay — even the offset's own permutation null, which contains no
-structure at all — takes the median bias from -0.94 sd to 0.00 and the beyond-2-sd
-share from 12.6% to **4.6%**, which is exactly the centred figure reported above.
-So 8 of the 12.6 points were never epistasis: they were the additive prediction
-sitting off zero in that assay.
+**The offset rows are bookkeeping, not findings.** Removing one offset per assay —
+even the offset's own permutation null, which contains no structure at all — takes
+the median bias to 0.00 by construction and the beyond-2-sd share from 12.6% to
+**4.6%**, the centred figure above. Under the median centring 8 of the 12.6 points
+were the additive prediction sitting off zero; the convention-free share is 4.6%.
 
-**The spread is real and mostly survives.** The best model removes **38%** of the
-residual variance and still leaves **62%**. The pair model beats its own null in
-**48/48 assays** on variance removed (the position term alone in 47/48), so this is
-not a fitting artefact; the residual is genuinely not additive noise.
+**Position is mostly absorbing a global calibration.** The best model removes a
+median **0.381** of the residual variance (position alone **0.333**), and the pair
+model beats its own null in **48/48 assays** on variance removed (the position
+term alone in 47/48), so this is not a fitting artefact. But a two-number linear
+recalibration of the additive prediction — no positions, no pairs, fitted
+out-of-fold and scored on the same metric — removes a median **0.500**, more than
+either (`scripts/reference.py`, `results/reference.json`). The additive prediction
+is over-dispersed, and most of what the position term buys is that global
+correction, not positional structure. The gap is not closed: about half of the
+residual variance is left after the recalibration, and these data cannot split
+that half into measurement noise and epistasis.
 
 **Ranking barely moves.** Median AUC goes 0.884 → **0.905**, a median gain of
 +0.0081, and the pair model wins in only **34/48 assays**. A model that needs 4/5 of
@@ -255,10 +283,11 @@ singles-only can use.
 That last caveat is the important one, and it is in `results/alt_baseline.json`
 rather than here: every per-assay row is fitted on 4/5 of **that protein's own
 doubles**, so these numbers bound what a stronger baseline can achieve, not what a
-singles-only design can. Held-out whole position pairs were not run, so the position
-term could also be absorbing a global nonlinearity such as assay saturation. What
-the table does establish is that the *gap* — 62% of the variance, and a ceiling on
-ranking — is not an artefact of using the crudest model.
+singles-only design can. Held-out whole position pairs were not run. What the
+table and the recalibration establish together is narrower than the earlier
+reading ("the gap is not an artefact of a weak baseline"): a global recalibration
+does more than position, and about half of the residual variance survives it — a
+gap, but not evidence that the gap is positional.
 
 ## Can a protein language model do better?
 
@@ -290,8 +319,8 @@ these data, does anything else tested here.** The three candidate priors are all
 null: the magnitude of the singles (fails a construction-preserving permutation),
 residue identity (rank correlation across assay halves +0.50), and ESM-2 context
 (indistinguishable from pure noise, and actively harmful on top of the prior).
-What survives is the ranking result, AUC 0.884, and the fact that the residual is
-biased — neither of which lets you pick the pairs in advance.
+What survives is the ranking result, AUC 0.884, which does not let you pick the
+pairs in advance.
 
 ### The same test at corpus scale
 
@@ -302,19 +331,26 @@ corpus at a 50,000-pair-per-assay cap, with a **100%** run (817,120 pairs) as a
 sensitivity check, and three heads instead of one. The verdict rule was committed
 in `b323e50` before any head was fitted.
 
-| head | 39.0% of corpus | 100% of corpus |
-|---|---|---|
-| (a) the shipped PCA(100)+RidgeCV estimator | INCONCLUSIVE | NOT_SUPPORTED |
-| (b) early-stopped linear on window embeddings, no interaction terms | NOT_SUPPORTED | INCONCLUSIVE |
-| (c) the free prior always present, ESM block on top | INCONCLUSIVE | NOT_SUPPORTED |
+| head | 39.0% of corpus, 2·SE (preregistered) | 39.0% of corpus, t(4) | 100% of corpus, 2·SE (preregistered) | 100% of corpus, t(4) |
+|---|---|---|---|---|
+| (a) the shipped PCA(100)+RidgeCV estimator | INCONCLUSIVE | INCONCLUSIVE | NOT_SUPPORTED | NOT_SUPPORTED |
+| (b) early-stopped linear on window embeddings, no interaction terms | NOT_SUPPORTED | INCONCLUSIVE | INCONCLUSIVE | INCONCLUSIVE |
+| (c) the free prior always present, ESM block on top | INCONCLUSIVE | INCONCLUSIVE | NOT_SUPPORTED | INCONCLUSIVE |
 
-**No head beats its larger control at either sample size.** Head (a) scores +0.026
-against a shuffled control of +0.055; (b) -0.017 against +0.002; (c) +0.031 against
-+0.058. The nominal gain of ESM over the free prior is **+0.154 ± 0.084** — but
-shuffling the ESM rows within an assay gives **+0.181 ± 0.094**, *more*, so that
-gain comes from knowing which assay a pair belongs to, not from the pair. At full
-corpus, (a) and (c) fall to NOT_SUPPORTED outright. The null is now a statement
-about the corpus rather than about one window size and one estimator.
+The 2·SE columns are the rule committed in `b323e50` before any head was fitted,
+and they stay as preregistered. But 2·SE over five folds is an **88.4%** interval,
+not a 95% one; with the t(4) critical value of **2.776** (`scripts/esm_tcrit.py`)
+two of the three NOT_SUPPORTED cells become INCONCLUSIVE.
+
+**No head beats its larger control at either sample size, under either rule.**
+Head (a) scores +0.026 against a shuffled control of +0.055; (b) -0.017 against
++0.002; (c) +0.031 against +0.058. The nominal gain of ESM over the free prior is
+**+0.154 ± 0.084** — but shuffling the ESM rows within an assay gives
+**+0.181 ± 0.094**, *more*, so that gain comes from knowing which assay a pair
+belongs to, not from the pair. Only head (a) at full corpus excludes a 0.02 gain
+under both rules; the other five cells cannot exclude one at t(4). The null is a
+statement about this pipeline at corpus scale with five folds of power, not a
+demonstration that no sequence model could help.
 
 One defect the re-run exposed is worth publishing because it is a trap any pooled
 evaluation of these data will hit: `|predicted|` is in raw assay units while the
@@ -338,8 +374,8 @@ python scripts/build_pairs.py \
     --data <ProteinGym dir with <assay>.csv> \
     --index <DMS_substitutions.csv>
 
-# 2. the per-assay summary (build_pairs writes it; this rebuilds it from the
-#    pair tables alone, which is what CI and a fresh clone can actually do)
+# 2. the per-assay summary, rebuilt from the pair tables of step 1 (build_pairs
+#    writes it too; this is the cheap re-run after a summary change)
 python scripts/rebuild_summary.py
 
 # 3. the magnitude prior and the null that withdraws it
@@ -354,7 +390,11 @@ python scripts/depth.py
 python scripts/alt_baseline.py --n-perm 10 --workers 8
 
 # 6. the held-out checks: one lab or many, and the assays excluded by size
-python scripts/heldout.py
+#    (--index defaults to $EPSCEIL_INDEX, then ../_data/DMS_substitutions.csv)
+python scripts/heldout.py --index <DMS_substitutions.csv>
+
+# 6b. both centring conventions, and the two-number recalibration
+python scripts/reference.py
 
 # 7. why a pooled rho across assays is not a within-assay rho
 python scripts/prior_units.py
@@ -364,26 +404,39 @@ python scripts/prior_units.py
 #    with three heads and a 100% sensitivity pass
 python scripts/esm_context.py --index <DMS_substitutions.csv>
 python scripts/esm_scale.py --max-per-assay 50000 --sensitivity-caps 0
+python scripts/esm_tcrit.py      # the same verdicts under t(4), beside 2 SE
 
 # 9. the figures, then the claim audit and the tests (figures write the r values
 #    the README quotes, so they run before the audit)
 python scripts/make_figures.py
-python scripts/audit_claims.py
+python scripts/audit_claims.py --strict
 pytest tests/
 ```
 
-The audit is also a test (`tests/test_claims.py`), so CI fails on a stale number
-as well as on a broken function.
+**What needs what.** Everything that reads the pair tables — steps 2 to 5, 6b,
+7 and the figures — needs the gitignored `results/pairs/` from step 1, and on a
+fresh clone `rebuild_summary.py`, `prior_units.py` and `make_figures.py` stop
+with exit 1 and a message naming that directory and `build_pairs.py` rather than
+writing anything partial. With committed files alone a clone can run the audit,
+`esm_tcrit.py` and the tests, which is what CI does.
+
+The audit is also a test, and CI runs it with `--strict`. Every audited number is
+bound to the sentence or table cell it belongs in (an *anchor*), so a right number
+in the wrong row fails, not just a number missing from the page; a missing
+artefact fails rather than shrinking the check; and `tests/test_claims.py` mutates
+the README in memory (a wrong value, two swapped rows, a flipped sign) and
+requires the audit to reject each.
 
 ## Limits, stated plainly
 
 - **Additivity is not the only null model — and now that is measured, not promised.**
   The per-position and rank-k position-pair rows above are those stronger baselines.
-  They remove 38% of the residual variance and leave 62%, and they need 4/5 of the
-  assay's own measured doubles to do it, so they bound the gap rather than close it
-  for a lab that has singles only. A monotone global-epistasis fit (saturation, a
-  floor) was **not** run, so the position R² is not evidence of position-*specific*
-  epistasis, and whole position pairs were never held out.
+  They remove a median 0.381 of the residual variance and need 4/5 of the assay's
+  own measured doubles to do it; a two-number linear recalibration with no
+  positions removes 0.500, so most of what they capture is a global calibration,
+  and the position R² is not evidence of position-*specific* epistasis. A monotone
+  global-epistasis fit beyond that linear map (saturation, a floor) was not run,
+  and whole position pairs were never held out.
 - **ProteinGym is not one experiment.** Assays differ in scale, saturation and
   what "fitness" means (fluorescence, growth, binding). The normalisation makes
   them comparable in *spread*, not in *meaning*; the per-assay table is the real
@@ -410,18 +463,19 @@ as well as on a broken function.
   fails a construction-preserving permutation, residue identity does not replicate
   across assay halves, and ESM-2 context is indistinguishable from noise. A reader
   who came for "which pairs will break" should leave without an answer; what the
-  repo establishes is the size of the gap (AUC 0.884 ranking, 12.6% of pairs
-  beyond 2 sd, marked bias) and that three obvious ways to close it do not work.
-  The held-out section narrows even that: the ranking replicates out of sample and
-  the offset does not, so quote the AUC and not the 0.94 sd.
-- **`results/pairs/` is gitignored** (101 MB, reproducible). That used to mean a
-  fresh clone could not check the pooled fraction and the audit had to announce
-  reduced coverage. `assay_summary.csv` now carries the integer counts
-  (`n_outside_2sd`, `n_outside_2sd_centred`, `n_within_1sd`) beside every
-  fraction, so the pooled number is `n_outside_2sd.sum() / n_pairs.sum()` —
-  computable in a clone from a committed file, and exact where a fraction times a
-  row count only round-trips by luck. `tests/test_claims.py` still guards that a
-  claim which stops being checkable is named rather than dropped.
+  repo establishes is the size of the gap (AUC 0.884 ranking; 4.6% of pairs beyond
+  2 sd once each assay's own offset is removed; an offset whose sign is a centring
+  convention) and that three obvious ways to close it do not work. The held-out
+  section narrows even that: every lab family ranks well above chance, at levels
+  that differ by lab, and the offset is a convention — so quote the AUC and not the
+  0.94 sd.
+- **`results/pairs/` is gitignored** (reproducible from raw ProteinGym with step 1).
+  That used to mean a fresh clone could not check the pooled fraction.
+  `assay_summary.csv` now carries the integer counts (`n_outside_2sd`,
+  `n_outside_2sd_centred`, `n_within_1sd`) beside every fraction, so the pooled
+  number is `n_outside_2sd.sum() / n_pairs.sum()` — computable in a clone from a
+  committed file, and exact where a fraction times a row count only round-trips
+  by luck. A missing artefact now fails the audit instead of shrinking it.
 - **Two assays were skipped** (F7YBW8_MESOW_Aakre_2015, GCN4_YEAST_Staller_2018)
   for having too few singles or doubles by the stated threshold; see
   `results/skipped.txt`.
@@ -438,9 +492,11 @@ scripts/invariant_stats.py  shift-invariant correlations, AUC, bias accounting
 scripts/depth.py            position, residue and centred-prior probes
 scripts/alt_baseline.py    stronger baselines, out-of-fold, with permutation nulls
 scripts/heldout.py          one-lab-in-the-corpus and size-excluded assays
+scripts/reference.py        both centring conventions; two-number recalibration
 scripts/prior_units.py      within-assay vs pooled: what a rho is measured over
 esm_context.py              the GPU probe, grouped CV by assay (4.4% sample)
 scripts/esm_scale.py        corpus-scale ESM probe, three heads, two controls
+scripts/esm_tcrit.py        the ESM verdicts under t(4) beside the 2 SE rule
 scripts/make_figures.py     figures from committed artefacts
 scripts/audit_claims.py     every README number against a committed artefact
 tests/                      invariants, estimator labels, the claim audit

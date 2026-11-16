@@ -53,8 +53,10 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
         claims.append(("assays", [str(len(s))], "assay_summary.csv rows"))
         claims.append(("pairs", [f"{int(s.n_pairs.sum()):,}"],
                        "assay_summary.csv n_pairs sum"))
-        claims.append(("median spearman", [f"{s.spearman_additive.median():.3f}"],
-                       "assay_summary.csv spearman median"))
+        # every median is over the 48 assays with >=500 pairs, as the README says
+        claims.append(("median spearman",
+                       [f"{s[s.n_pairs >= 500].spearman_additive.median():.3f}"],
+                       "assay_summary.csv spearman median, >=500 pairs"))
         claims.append(("min coverage", [f"{s.coverage.min():.1%}"],
                        "assay_summary.csv coverage min"))
         # F8: both denominators are published, so both are audited. The old README
@@ -245,11 +247,6 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
                                [f"{b['median']:+.2f}", f"{b['median']:.2f}",
                                 f"{abs(b['median']):.2f}"],
                                f"heldout.json H1 {tag} bias_sd median"))
-            ci = b.get("ci95") or []
-            if len(ci) == 2:
-                claims.append((f"heldout bias CI {tag}",
-                               [f"{ci[0]:+.2f}", f"{ci[1]:+.2f}"],
-                               f"heldout.json H1 {tag} bias_sd ci95"))
             a = (grp.get("auc") or {})
             if a.get("median") is not None:
                 claims.append((f"heldout auc {tag}",
@@ -272,11 +269,6 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
             claims.append(("heldout excluded bias",
                            [f"{sb['median']:+.2f}", f"{sb['median']:.2f}"],
                            "heldout.json H2 bias_sd median"))
-        sci = sb.get("ci95") or []
-        if len(sci) == 2:
-            claims.append(("heldout excluded bias CI",
-                           [f"{sci[0]:+.2f}", f"{sci[1]:+.2f}"],
-                           "heldout.json H2 bias_sd ci95"))
         sa = (sh.get("auc") or {}).get("median")
         if sa is not None:
             claims.append(("heldout excluded auc", [f"{sa:.3f}"],
@@ -363,19 +355,6 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
                 claims.append(("alt_baseline pair_rank3 auc wins",
                                [str(m["assays_auc_above_additive"])],
                                "alt_baseline.json pair_rank3 auc wins"))
-        gs = (a.get("verdict") or {}).get("gap_survives") or {}
-        if gs.get("spread"):
-            # "leaves 0.619 of the residual variance" is written as 62% in the
-            # prose, so both spellings have to satisfy the check - the artefact
-            # stores the fraction, the README rounds it.
-            text = str(gs["spread"])
-            m_leave = re.search(r"leaves ([0-9.]+) of the residual", text)
-            if m_leave:
-                frac = float(m_leave.group(1))
-                claims.append(("alt_baseline variance left",
-                               [m_leave.group(1), f"{round(frac * 100)}%",
-                                f"{frac * 100:.0f}%"],
-                               "alt_baseline.json gap_survives.spread"))
 
     # --- corpus-scale ESM probe (scripts/esm_scale.py) -----------------------
     esm_scale_p = RES / "esm_scale.json"
