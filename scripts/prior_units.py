@@ -65,7 +65,11 @@ def main() -> int:
         pooled_sd_x.append(x_sd), pooled_sd_y.append(y)
 
     if not rows:
-        raise SystemExit("no pair files; run scripts/build_pairs.py first")
+        # Same rule as rebuild_summary.py and make_figures.py (README, "What needs
+        # what"): exit 1 naming the missing input; write nothing partial.
+        raise SystemExit(f"no pair tables in {RES / 'pairs'}: prior_units.py needs the "
+                         "gitignored results/pairs/; run scripts/build_pairs.py first "
+                         "(README, Reproducing step 1)")
     t = pd.DataFrame(rows)
 
     def pooled(xs, ys) -> float:

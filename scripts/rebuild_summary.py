@@ -48,7 +48,12 @@ def main() -> int:
             coverage=float(prev.coverage) if prev is not None else float("nan"),
             n_singles=int(prev.n_singles_measured) if prev is not None else 0))
     if not rows:
-        raise SystemExit("no pair files; run scripts/build_pairs.py first")
+        # Same rule as prior_units.py and make_figures.py (README, "What needs
+        # what"): a script that cannot do its job exits 1 naming the missing input
+        # and the command that makes it, and writes nothing partial.
+        raise SystemExit(f"no pair tables in {args.pairs_dir}: rebuild_summary.py needs "
+                         "the gitignored results/pairs/; run scripts/build_pairs.py "
+                         "first (README, Reproducing step 1)")
     df = pd.DataFrame(rows).sort_values("n_pairs", ascending=False)
     df.to_csv(out, index=False)
     print(f"wrote {out} with {len(df)} assays, {int(df.n_pairs.sum()):,} pairs")
