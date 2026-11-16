@@ -71,7 +71,7 @@ def fig_ceiling() -> None:
     ax.set_xlabel("additivity residual (assay standard deviations)")
     ax.set_ylabel("double mutants")
     ax.set_title(f"The additive shortcut's error\n"
-                 f"{len(allres):,} pairs, {np.mean(np.abs(allres) > 2):.1%} "
+                 f"{len(allres):,} pairs, {np.mean(np.abs(allres) > 2):.1%} POOLED "
                  f"beyond ±2 sd", fontsize=9.5)
     ax.set_xlim(-6, 6)
     ax.text(2.1, ax.get_ylim()[1] * 0.92, "±2 sd", color="#d62728", fontsize=7.5)

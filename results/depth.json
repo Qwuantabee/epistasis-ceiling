@@ -5,16 +5,17 @@
     "n_assays": 48,
     "rho_repo_median": -0.2602835096298011,
     "rho_repo_positive_assays": 16,
-    "rho_centred_median": 0.32806614331076145,
-    "rho_centred_positive_assays": 48,
-    "permutation_null_centred_median": 0.5073525510774661,
+    "rho_centred_median": 0.3125973583144545,
+    "rho_centred_positive_assays": 47,
+    "permutation_null_centred_median": 0.5017525319661216,
     "permutation_null_centred_ci95": [
-      0.2934109962928955,
-      0.6914968546296351
+      0.3066249497794964,
+      0.717006114811172
     ],
     "permutation_null_centred_positive_assays": 144,
     "permutation_null_reps": 144,
-    "observed_centred_minus_null": -0.17928640776670468,
+    "observed_centred_minus_null": -0.18915517365166706,
+    "assays_observed_exceeds_own_null": 2,
     "bias_mean_sd_median": -0.9381523839258121,
     "assays_median_predicted_off_origin": 43,
     "rho_by_bias_bin": {

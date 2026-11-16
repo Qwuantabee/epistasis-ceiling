@@ -9,13 +9,13 @@
     {
       "check": "pytest in clone",
       "ok": true,
-      "detail": ".................                                                        [100%]"
+      "detail": "......................                                                   [100%]"
     },
     {
       "check": "claim audit",
       "ok": true,
-      "detail": "23/23 claims found in the README",
-      "note": "runs with reduced coverage: results/pairs/ is gitignored, so the pooled claim is unverified in a clone"
+      "detail": "18/18 claims found in the README",
+      "note": ""
     },
     {
       "check": "figure links resolve",
@@ -45,8 +45,8 @@
     {
       "check": "no single file over 25 MB",
       "ok": true,
-      "detail": "28 tracked files; big=[]"
+      "detail": "38 tracked files; big=[]"
     }
   ],
-  "head": "c44e0b6"
+  "head": "a0fbb28"
 }

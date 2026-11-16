@@ -1,12 +1,64 @@
 {
-  "n_pairs": 35110,
-  "n_assays": 20,
+  "n_pairs": 36000,
+  "n_assays": 24,
   "features": "ESM-2 window embeddings (both positions) + abs-diff + product + log1p(sep)",
   "cv": "GroupKFold(5) by assay",
-  "spearman_mean": 0.06435964644195316,
-  "spearman_sd": 0.12721988086099184,
-  "mae_improvement_mean": -1.4254840056540403,
-  "mae_improvement_sd": 0.7731695845808905,
+  "target": "|centred additivity residual|, log1p on the model side",
+  "selection": {
+    "assays_available_over_300_pairs": 59,
+    "pairs_available": 817120,
+    "assays_used": 24,
+    "pairs_used": 36000,
+    "fraction_of_available": 0.04405717642451537,
+    "rule": "assays ranked by pair count, descending; capped per assay"
+  },
+  "spearman_mean": -0.0028581591341477674,
+  "spearman_sd": 0.04875102877504779,
+  "mae_improvement_mean": -0.011158924446829078,
+  "mae_improvement_sd": null,
   "folds": 5,
-  "device": "cuda"
+  "device": "cuda",
+  "controls": {
+    "noise": {
+      "label": "pure noise, identical pipeline",
+      "spearman_mean": 0.00742009188533492,
+      "spearman_sd": 0.013925414026681213,
+      "mae_model": 0.4745906057737419,
+      "mae_constant_baseline": 0.47171965241331987,
+      "mae_improvement_sd_units": -0.003982572738285477,
+      "mae_improvement_mean": -0.002870953360422057,
+      "mae_improvement_relative": -0.006086143211829837
+    },
+    "prior_only": {
+      "label": "|additive prediction| alone (the free prior)",
+      "spearman_mean": 0.23067067431063254,
+      "spearman_sd": 0.15325052305905765,
+      "mae_model": 0.4779171861029231,
+      "mae_constant_baseline": 0.47171965241331987,
+      "mae_improvement_sd_units": -0.008597189023367242,
+      "mae_improvement_mean": -0.006197533689603274,
+      "mae_improvement_relative": -0.013138171492106939
+    },
+    "esm_only": {
+      "label": "ESM-2 features alone",
+      "spearman_mean": -0.0028581591341477674,
+      "spearman_sd": 0.04875102877504779,
+      "mae_model": 0.482878576860149,
+      "mae_constant_baseline": 0.47171965241331987,
+      "mae_improvement_sd_units": -0.015479606496984526,
+      "mae_improvement_mean": -0.011158924446829078,
+      "mae_improvement_relative": -0.023655839627923003
+    },
+    "esm_plus_prior": {
+      "label": "ESM-2 features + |additive prediction|",
+      "spearman_mean": -0.007473111645527862,
+      "spearman_sd": 0.049115200836594854,
+      "mae_model": 0.48281235242952186,
+      "mae_constant_baseline": 0.47171965241331987,
+      "mae_improvement_sd_units": -0.015387740284297149,
+      "mae_improvement_mean": -0.01109270001620195,
+      "mae_improvement_relative": -0.02351545024561018
+    }
+  },
+  "incremental_value_of_esm_over_prior": -0.2381437859561604
 }

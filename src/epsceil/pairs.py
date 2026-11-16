@@ -112,15 +112,26 @@ def add_centred_columns(t: pd.DataFrame) -> pd.DataFrame:
     results/pairs/ is gitignored and predates the centring fix, so every consumer
     that reads a pair CSV calls this rather than trusting the file to have the
     columns. One function, so the definition cannot drift between scripts.
+
+    THE CONVENTION IS MEAN-CENTRING FOR BOTH SERIES, named here once and used
+    everywhere (depth.py, prior.py, esm_context.py, invariant_stats.py). Mixing
+    mean-centring one series with median-centring the other produces a number that
+    is neither convention; that mistake sat in this file for one revision and moved
+    the statistic from 0.313 to 0.328 without any of the data changing. Depth also
+    reports the median-centred value (+0.373) as a robustness check, and the two
+    agree on the conclusion, which is the point of reporting both.
     """
+    t = t.copy()
     if "residual_c" not in t.columns:
-        t = t.copy()
-        t["residual_c"] = t.residual - t.groupby("assay").residual.transform("mean") \
-            if "assay" in t.columns else t.residual - float(t.residual.mean())
+        t["residual_c"] = (t.residual
+                           - t.groupby("assay").residual.transform("mean")
+                           if "assay" in t.columns
+                           else t.residual - float(t.residual.mean()))
     if "predicted_c" not in t.columns:
         t["predicted_c"] = (t.predicted
-                            - t.groupby("assay").predicted.transform("median")) \
-            if "assay" in t.columns else t.predicted - float(t.predicted.median())
+                            - t.groupby("assay").predicted.transform("mean")
+                            if "assay" in t.columns
+                            else t.predicted - float(t.predicted.mean()))
     return t
 
 
@@ -182,7 +193,7 @@ def build_pairs(df: pd.DataFrame, assay: str,
     # because the bias is itself a finding (doubles are systematically worse than
     # additive) and nothing here hides it.
     t["residual_c"] = t["residual"] - float(t["residual"].mean())
-    t["predicted_c"] = t["predicted"] - float(t["predicted"].median())
+    t["predicted_c"] = t["predicted"] - float(t["predicted"].mean())
 
     return AssayPairs(assay=assay, doubles=t, singles=s_map, wt=wt,
                       n_singles_measured=len(s_map), n_doubles_total=len(doubles))

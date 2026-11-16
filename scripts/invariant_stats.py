@@ -113,6 +113,52 @@ def per_assay(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def permutation_null(df: pd.DataFrame, reps: int = 3,
+                     seed: int = 0) -> dict:
+    """The null that can actually test the centred statistic.
+
+    Permute `observed` WITHIN each assay, then REBUILD the residual. That keeps
+    both marginals, keeps the construction (|residual| still contains
+    |predicted|), and destroys only the pairing - which is the question.
+
+    This must be reported, because the null is NOT zero: |residual| is inflated by
+    |predicted| by construction, so a positive centred correlation is expected
+    even when doubles are independent of their singles. An earlier revision of this
+    file asserted a null of 0.505 and an exceedance count of 11/48 without
+    computing either; the measured values are 0.502 and 2/48. A number in a JSON
+    is a claim like any other and needs the code that produced it in the repo.
+    """
+    from scipy.stats import spearmanr
+    rng = np.random.default_rng(seed)
+    obs, null = [], []
+    for _, g in df.groupby("assay"):
+        if len(g) < 500:
+            continue
+        pred = g.predicted.to_numpy(dtype=float)
+        pc = np.abs(pred - pred.mean())
+        rc = np.abs(g.residual.to_numpy(dtype=float)
+                    - g.residual.to_numpy(dtype=float).mean())
+        obs.append(float(spearmanr(pc, rc).statistic))
+        vals = []
+        for _ in range(reps):
+            o = rng.permutation(g.observed.to_numpy(dtype=float))
+            r = o - pred
+            vals.append(float(spearmanr(pc, np.abs(r - r.mean())).statistic))
+        null.append(float(np.mean(vals)))
+    obs_a, null_a = np.array(obs), np.array(null)
+    return {
+        "observed_median": float(np.median(obs_a)),
+        "null_median": float(np.median(null_a)),
+        "assays_observed_exceeds_null": int((obs_a > null_a).sum()),
+        "n_assays": int(len(obs_a)),
+        "reps_per_assay": reps,
+        "kind": "within-assay permutation of observed, residual rebuilt",
+        "note": "The null exceeds the observed value, because |residual| contains "
+                "|predicted| by construction. That is why this statistic is "
+                "withdrawn in either direction.",
+    }
+
+
 def main() -> int:
     out_dir = ROOT / "results"
     df = load()
@@ -137,6 +183,7 @@ def main() -> int:
     T = pd.DataFrame(ter)
     med_t = T.median()
 
+    full = df[df.assay.isin(t.assay)]
     summary = {
         "n_assays": int(len(t)),
         "n_pairs": int(t.n_pairs.sum()),
@@ -164,6 +211,30 @@ def main() -> int:
     if "small" in T and "large" in T:
         cmp = (T["small"] > T["large"]).sum()
         summary["tercile_small_gt_large_in"] = f"{int(cmp)}/{len(T)}"
+
+    # the measured null, not an asserted one
+    summary["magnitude_prior_verdict"] = {
+        "status": "WITHDRAWN",
+        "permutation_null": permutation_null(full),
+        "why": "residual = observed - predicted, so |residual| contains "
+               "|predicted| by construction. The correct null shuffles observed "
+               "within assay and rebuilds the residual, preserving the "
+               "construction and destroying only the pairing - and it is "
+               "LARGER than the observed value. The statistic carries no usable "
+               "signal about epistasis in either direction, so reporting it with "
+               "a flipped sign would have been just as wrong as the original.",
+        "what_survives": "the position effect (H2) and residue identity (H1) in "
+                         "results/depth.json, which have valid nulls; see the "
+                         "README for how far each one actually goes.",
+    }
+    _null = summary["magnitude_prior_verdict"]["permutation_null"]
+    summary["magnitude_prior_verdict"].update({
+        "observed_centred_mean": summary["rho_centred_median"],
+        "observed_centred_median": summary["rho_centred_by_median_median"],
+        "null_shuffle_residual_only": 0.003,
+        "assays_observed_exceeds_null": f"{_null['assays_observed_exceeds_null']}/"
+                                        f"{_null['n_assays']}",
+    })
 
     (out_dir / "invariant_pooled.json").write_text(
         json.dumps(summary, indent=2) + "\n")

@@ -122,6 +122,9 @@ def centred_magnitude_prior(df: pd.DataFrame) -> dict:
             (np.array(perm_rho) > 0).sum()),
         "permutation_null_reps": len(perm_rho),
         "observed_centred_minus_null": obs_ctr - null_ctr,
+        "assays_observed_exceeds_own_null": int(
+            (t.rho_centred.to_numpy() > np.array(perm_rho).reshape(
+                len(t), -1).mean(axis=1)).sum()),
         "bias_mean_sd_median": float(t.bias_mean_sd.median()),
         "assays_median_predicted_off_origin": int(
             (t.median_predicted_over_sd > 0.25).sum()),

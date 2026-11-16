@@ -21,13 +21,20 @@
   "tercile_small_gt_large_in": "4/48",
   "magnitude_prior_verdict": {
     "status": "WITHDRAWN",
-    "why": "The statistic rho(|residual|, |predicted|) is uninterpretable here, in either sign. residual = observed - predicted, so |residual| contains |predicted| by construction. The correct null - shuffle observed within assay and REBUILD the residual, preserving the construction - gives median +0.505, which is LARGER than the observed +0.313; observed exceeds the null in only 11 of 48 assays.",
-    "observed_centred_mean": 0.313,
-    "observed_centred_median": 0.373,
-    "null_shuffle_observed_rebuilt": 0.505,
+    "permutation_null": {
+      "observed_median": 0.3125973583144545,
+      "null_median": 0.5001211143129166,
+      "assays_observed_exceeds_null": 2,
+      "n_assays": 48,
+      "reps_per_assay": 3,
+      "kind": "within-assay permutation of observed, residual rebuilt",
+      "note": "The null exceeds the observed value, because |residual| contains |predicted| by construction. That is why this statistic is withdrawn in either direction."
+    },
+    "why": "residual = observed - predicted, so |residual| contains |predicted| by construction. The correct null shuffles observed within assay and rebuilds the residual, preserving the construction and destroying only the pairing - and it is LARGER than the observed value. The statistic carries no usable signal about epistasis in either direction, so reporting it with a flipped sign would have been just as wrong as the original.",
+    "what_survives": "the position effect (H2) and residue identity (H1) in results/depth.json, which have valid nulls; see the README for how far each one actually goes.",
+    "observed_centred_mean": 0.3125973583144545,
+    "observed_centred_median": 0.3732846286029873,
     "null_shuffle_residual_only": 0.003,
-    "assays_observed_exceeds_null": "11/48",
-    "reviewer_agrees": "Reviewer F2/F3 reached the same withdrawal; its centred figure was +0.373 (median-centring) and its permutation null +0.349.",
-    "what_replaces_it": "The position effect (H2) and residue identity (H1), which have valid nulls and survive them."
+    "assays_observed_exceeds_null": "2/48"
   }
 }
