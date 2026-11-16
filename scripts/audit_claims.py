@@ -29,9 +29,17 @@ def _pct(x: float) -> list[str]:
     return [f"{x:.1f}%", f"{round(x)}%", f"{x:.2f}%"]
 
 
-def build_claims() -> list[tuple[str, list[str], str]]:
-    """(label, acceptable spellings, source-of-truth description)."""
+def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
+    """(claims, unverifiable) where `unverifiable` names claims that could not be
+    built at all.
+
+    Why this exists: results/pairs/ is gitignored (large, reproducible), so in a
+    fresh clone the pooled-epistasis claim silently vanished and the audit reported
+    23/23 instead of 24/24 - a green run over reduced coverage, which is worse than
+    a red one. Anything that cannot be checked is now named.
+    """
     claims: list[tuple[str, list[str], str]] = []
+    unverifiable: list[str] = []
 
     summ_p = RES / "assay_summary.csv"
     prior_p = RES / "prior_pooled.json"
@@ -55,7 +63,11 @@ def build_claims() -> list[tuple[str, list[str], str]]:
 
     # pooled strong-epistasis fraction, recomputed from the pair files
     pair_files = sorted((RES / "pairs").glob("*.csv"))
-    if pair_files:
+    if not pair_files:
+        unverifiable.append(
+            "strong epistasis fraction (needs results/pairs/*.csv; run "
+            "scripts/build_pairs.py)")
+    else:
         import numpy as np
         tot = 0
         strong = 0
@@ -152,7 +164,7 @@ def build_claims() -> list[tuple[str, list[str], str]]:
             claims.append(("distance spearman", [f"{r:.2f}"],
                            "esm_probe.json"))
 
-    return claims
+    return claims, unverifiable
 
 
 def main() -> int:
@@ -162,7 +174,7 @@ def main() -> int:
     args = ap.parse_args()
 
     readme = Path(args.readme).read_text()
-    claims = build_claims()
+    claims, unverifiable = build_claims()
     if not claims:
         print("no artefacts found - run build_pairs.py and prior.py first")
         return 1
@@ -173,6 +185,10 @@ def main() -> int:
             missing.append((label, spellings, source))
 
     print(f"{len(claims) - len(missing)}/{len(claims)} claims found in the README")
+    if unverifiable:
+        print(f"\nUNVERIFIED ({len(unverifiable)}) - coverage is REDUCED, not clean:")
+        for u in unverifiable:
+            print(f"  {u}")
     if missing:
         print("\nMISSING OR MISQUOTED:")
         for label, spellings, source in missing:
@@ -183,7 +199,10 @@ def main() -> int:
     if args.verbose:
         for label, spellings, source in claims:
             print(f"  OK {label:32s} {spellings[0]:>12s}  <- {source}")
-    print("every published number matches a committed artefact")
+    if unverifiable:
+        print("every checkable number matches; the ones above could not be checked")
+    else:
+        print("every published number matches a committed artefact")
     return 0
 
 

@@ -37,3 +37,27 @@ def test_every_figure_on_disk_is_embedded():
     readme = (ROOT / "README.md").read_text()
     orphans = sorted(f for f in figs if f not in readme)
     assert not orphans, f"figures exist but are not shown: {orphans}"
+
+
+def test_audit_never_reports_clean_when_a_claim_is_unverifiable():
+    """A green audit over reduced coverage is worse than a red one.
+
+    results/pairs/ is gitignored, so a fresh clone cannot check the pooled
+    epistasis fraction. The audit used to omit that claim silently and report
+    23/23 instead of 24/24. It must now name what it could not check.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT / "scripts"))
+    import audit_claims
+
+    claims, unverifiable = audit_claims.build_claims()
+    # Either everything is checkable, or the gap is named; never both silent.
+    if unverifiable:
+        assert len(unverifiable) >= 1
+        for u in unverifiable:
+            assert "pairs" in u or "run " in u, (
+                "an unverifiable claim must say how to make it checkable")
+    # the audit source must actually print the unverified block
+    src = (ROOT / "scripts" / "audit_claims.py").read_text()
+    assert "UNVERIFIED" in src, (
+        "the audit must announce reduced coverage rather than implying a full pass")
