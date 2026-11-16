@@ -75,19 +75,30 @@ def parse_mutant(mutant: str) -> list[Mutation] | None:
 
 
 def wt_reference(scores: pd.Series) -> float:
-    """The centring constant for an assay.
+    """The centring constant for an assay, when the data carries no anchor.
 
-    DMS scores are already relative to wild type in most ProteinGym assays, but
-    the scale differs per assay. The MEDIAN of all measured variants is used as
-    the reference rather than an assumed zero: it is robust, and it makes the
-    additivity baseline invariant to an additive shift in the assay.
+    THIS IS A CONVENTION, NOT A MEASUREMENT, and reviewer round 2 (F1, CRITICAL)
+    showed what happens when that distinction is lost: the signed residual mean is
+    identified only up to this one constant per assay, so a headline "the model is
+    biased by -0.94 sd" is a statement about where the convention puts zero.
 
-    (`wt` cancels out of the RESIDUAL only up to the fact that it sets where zero
-    sits: residual = observed - (a + b - wt), so d(residual)/d(wt) = +1. An
-    earlier version of this docstring claimed the constant cancels. It does not
-    cancel from the residual - every residual in the assay moves by exactly wt -
-    which is harmless for a correlation between two signed quantities but NOT
-    harmless for anything involving |residual|. See residual_c below.)
+    residual = observed - (single_a + single_b - wt)  =>  d(residual)/d(wt) = +1
+
+    Shifting wt by one constant per assay shifts every residual in that assay by
+    the same amount. Consequences, all of them mechanical:
+
+      * residual_c (the CENTRED residual) and predicted_c are INVARIANT. Every
+        correlation, every permutation null, every centred fraction, and AUC are
+        therefore unaffected by this choice - which is why those results stand.
+      * the SIGNED residual mean, and anything using |residual| uncentred, are
+        NOT invariant. They must never be quoted as a property of additivity.
+
+    For the ddG assays (48 of 65, `raw_DMS_phenotype_name == ddG_ML_float`) the
+    data has its own anchor: the score is a difference from wild type, so the
+    correct additive reference is exactly 0. Callers that know the phenotype
+    should pass `wt_policy="anchored"` (or an explicit 0.0) rather than relying
+    on this median, which tracks library composition instead (a review measured
+    the share of doubles against it at Spearman -0.69).
     """
     return float(np.median(scores.to_numpy()))
 

@@ -1,0 +1,29 @@
+{
+  "question": "Is the additive model's bias a property of additivity, or of the arbitrary constant used to centre each assay?",
+  "n_assays": 48,
+  "n_assays_anchored_at_zero": 33,
+  "anchor_rule": "assays whose ProteinGym raw_DMS_phenotype_name is ddG_ML_float: the score is a difference from wild type, so the additive reference is exactly 0",
+  "identity": "bias_wt0 == bias_median_centred - median_of_variants / residual_sd_raw",
+  "identity_max_abs_error": 0.0,
+  "median_bias_under_median_centring": {
+    "all_assays": -0.9381523839258121,
+    "anchored_at_zero_assays": -0.7850327347467413,
+    "other_assays": -1.5010073151699856
+  },
+  "median_bias_under_wt0_for_anchored_assays": {
+    "all_assays": 0.940742237993793,
+    "anchored_at_zero_assays": 1.147543405743278,
+    "other_assays": -1.0626423089494628
+  },
+  "assays_positive_under_median_centring": 5,
+  "assays_positive_under_wt0": 36,
+  "anchored_positive_under_median_centring": 5,
+  "anchored_positive_under_wt0": 33,
+  "median_frac_outside_2sd_median_centred": 0.1261747972199645,
+  "median_frac_outside_2sd_wt0": 0.21006235686547844,
+  "linear_recalibration_two_numbers_median_r2": 0.4997826018283869,
+  "verdict": "WITHDRAWN",
+  "claim_under_test": "the additive prediction is biased by about -0.94 assay-sd, and that is a property of additivity",
+  "reading": "The bias is not a property of additivity: it is where the chosen centring constant puts zero. Under the shipped median-of-all-variants centring the 48 assays give a median bias near -0.94 sd; under the data's own reference for the 33 ddG-anchored assays (wild type = 0) the same assays come out POSITIVE, and positive in every one of them. A quantity that flips sign with the choice of origin cannot be a finding about the model, so the number is withdrawn as a headline. What is invariant to that choice \u2014 AUC, the centred residual statistics, and every permutation null built on centred quantities \u2014 is unaffected.",
+  "what_survives": "AUC 0.884 (invariant to any per-assay constant), the centred beyond-2-sd fractions, and the ranking conclusions. The docstring in src/epsceil/pairs.py already said wt is 'a convention, not a measurement'; the README then used the convention as a headline."
+}
