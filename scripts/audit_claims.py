@@ -291,6 +291,11 @@ def build_claims(res: Path = RES) -> tuple:
             cell(r"assays where observed exceeds the null", 1))
         add("AUC (invariant_pooled)", [f"{need(i, 'auc_median', src=src):.3f}"],
             src + " auc_median", cell(r"median AUC \(threshold-free direction\)", 1))
+        # Quoted in the text as the robustness check on the centring convention.
+        add("magnitude prior median-centring rho",
+            _signed(need(i, "rho_centred_by_median_median", src=src), "{:+.3f}"),
+            src + " rho_centred_by_median_median",
+            r"Median-centring instead of mean-centring gives ")
         add("beyond 2sd centred (invariant_pooled)",
             [f"{100 * need(i, 'frac_beyond_2sd_centred_median_of_assays', src=src):.1f}%"],
             src + " frac_beyond_2sd_centred_median_of_assays",
@@ -334,6 +339,15 @@ def build_claims(res: Path = RES) -> tuple:
             r"instead of by position gives R\u00b2\s+")
         add("position r2 demeaned", [f"{need(h2, 'observed_r2_demeaned_median', src=src):.3f}"],
             src + " H2 observed_r2_demeaned_median", r"It shrinks to ")
+        # The R2-by-group-count figures were quoted from a table that had no claim
+        # behind it, so a stale bin could ship while the audit stayed green.
+        add("position r2 groups 3-5",
+            [f"{need(h2, 'r2_by_position_count', '(2,5]', 'r2_median', src=src):.3f}"],
+            src + " H2 r2_by_position_count (2,5]",
+            r"median\s+R\u00b2 is ")
+        add("position r2 groups 21-60",
+            [f"{need(h2, 'r2_by_position_count', '(20,60]', 'r2_median', src=src):.3f}"],
+            src + " H2 r2_by_position_count (20,60]", r"groups and ")
         h1 = need(dj, "H1_residue", src=src)
         top = need(h1, "top", src=src)
         k0 = sorted(top)[0]
