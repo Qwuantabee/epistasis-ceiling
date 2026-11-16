@@ -185,6 +185,7 @@ def variance_explained_by_position(df: pd.DataFrame) -> dict:
     rng = np.random.default_rng(0)
     obs, null_perm, null_analytic = [], [], []
     obs_dm, k_list, cov_hot = [], [], []
+    k_union_list: list[int] = []
     mut_a, mut_b = [], []
     for assay, g in df.groupby("assay"):
         if len(g) < 500:
@@ -198,6 +199,16 @@ def variance_explained_by_position(df: pd.DataFrame) -> dict:
         n = len(y)
         if k < 2 or n < k + 2:
             continue
+        # HOW MANY POSITIONS DOES THE ASSAY ACTUALLY HAVE?
+        # `k` above is not that number: it counts distinct values of the LOWER of
+        # the two positions, i.e. the number of groups in the contrast being fitted.
+        # Review round 2 (F11) pointed out that the README then reported k as
+        # "distinct positions in the assay", which is a different quantity - the
+        # union of pos_a and pos_b. Measured on the 48 assays: the grouping median
+        # is 4 with 11 assays at 2, while the union median is 7 with NONE at 2.
+        # Both are reported so neither can be mistaken for the other.
+        k_union = len(set(g.pos_a.tolist()) | set(g.pos_b.tolist()))
+        k_union_list.append(k_union)
 
         def r2(vals: np.ndarray, codes=codes, k=k) -> float:
             grand = vals.mean()
@@ -234,6 +245,7 @@ def variance_explained_by_position(df: pd.DataFrame) -> dict:
         return {"verdict": "INCONCLUSIVE", "reason": "no assay had enough positions"}
     o, p, a = np.array(obs), np.array(null_perm), np.array(null_analytic)
     kk = np.array(k_list)
+    ku = np.array(k_union_list) if k_union_list else np.array([0])
     bins = [(1, 2), (2, 5), (5, 20), (20, 60), (60, 1000)]
     by_k = {}
     for lo, hi in bins:
@@ -248,10 +260,22 @@ def variance_explained_by_position(df: pd.DataFrame) -> dict:
         "analytic_null_median": float(np.median(a)),
         "observed_exceeds_null_in": int((o > p).sum()),
         # --- context that changes the interpretation (reviewer F5) ---
+        # positions_per_assay_* counts DISTINCT VALUES OF THE LOWER POSITION, i.e.
+        # the groups in the fitted contrast. positions_union_* counts distinct
+        # positions in the assay. They are not the same number and the earlier
+        # README attributed the first one to the assay (reviewer F11).
         "positions_per_assay_median": float(np.median(kk)),
         "positions_per_assay_min": int(kk.min()),
         "positions_per_assay_max": int(kk.max()),
         "assays_with_only_2_positions": int((kk == 2).sum()),
+        "positions_union_median": float(np.median(ku)),
+        "positions_union_min": int(ku.min()),
+        "positions_union_max": int(ku.max()),
+        "assays_with_only_2_positions_union": int((ku == 2).sum()),
+        "positions_count_note": ("positions_per_assay_* is the grouping contrast "
+                                 "(distinct lower positions); positions_union_* "
+                                 "is distinct positions in the assay. The README "
+                                 "must say which one it is quoting."),
         "r2_by_position_count": by_k,
         "observed_r2_demeaned_median": float(np.median(obs_dm)),
         "single_mutation_r2_median_slot_a": (float(np.median(mut_a))

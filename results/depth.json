@@ -51,6 +51,11 @@
     "positions_per_assay_min": 2,
     "positions_per_assay_max": 232,
     "assays_with_only_2_positions": 11,
+    "positions_union_median": 7.0,
+    "positions_union_min": 3,
+    "positions_union_max": 234,
+    "assays_with_only_2_positions_union": 0,
+    "positions_count_note": "positions_per_assay_* is the grouping contrast (distinct lower positions); positions_union_* is distinct positions in the assay. The README must say which one it is quoting.",
     "r2_by_position_count": {
       "(1,2]": {
         "n_assays": 11,

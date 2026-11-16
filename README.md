@@ -189,10 +189,13 @@ variance explained by which sequence positions are involved is **0.140**
 against a permutation null of 0.002, exceeding it in **47/48 assays**. Three
 caveats, all measured, because the first version of this section overstated it:
 
-- The median assay has only **4** distinct positions (11 assays have just 2), so
-  this is usually a four-group contrast, not a map of hot residues. It is weakest
-  exactly where the promise would matter: median R² is 0.189 for 3–5 positions and
-  0.054 for 21–60.
+- The median assay has only **4** groups in this contrast (11 assays have just 2),
+  because the grouping uses the lower of the two positions. Counting **distinct
+  positions in the assay** — the union of both slots — the median is **7** (min 3,
+  max 234) and **no** assay has only 2. So this is usually a four-group contrast,
+  not a map of hot residues; an earlier version of this line attributed the grouping
+  count to the assay. It is weakest exactly where the promise would matter: median
+  R² is 0.189 for 3–5 groups and 0.054 for 21–60.
 - It shrinks to **0.092** once the assay's own bias is removed, and the verdict is
   judged on that centred figure rather than the raw 0.140.
 - Grouping by **which single mutation** is involved instead of by position gives R²

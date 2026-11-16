@@ -309,6 +309,23 @@ def build_claims(res: Path = RES) -> tuple:
         add("position positions per assay",
             [f"{need(h2, 'positions_per_assay_median', src=src):.0f}"],
             src + " H2 positions_per_assay_median", r"The median assay has only ")
+        # F11 (review round 2): the README attributed the GROUPING count to the
+        # assay. Both numbers are now published and both are audited, so neither can
+        # masquerade as the other and the union figure cannot go stale silently.
+        add("position union median",
+            [f"{need(h2, 'positions_union_median', src=src):.0f}"],
+            src + " H2 positions_union_median", r"the median is ")
+        add("position union min",
+            [f"{need(h2, 'positions_union_min', src=src):.0f}"],
+            src + " H2 positions_union_min", r"\(min ")
+        add("position union max",
+            [f"{need(h2, 'positions_union_max', src=src):.0f}"],
+            src + " H2 positions_union_max", r"max ")
+        # "no assay has only 2" is IMPLIED by the audited min of 3, so it needs no
+        # separate claim: a minimum of 3 cannot coexist with a count of 2. Claiming
+        # the word "no" directly was wrong - the audit checks numbers, and a
+        # numeric claim whose anchor is followed by a word fails - which is how this
+        # entry was caught.
         add("position hot-decile coverage",
             [f"{need(h2, 'hot_decile_position_pair_coverage_median', src=src):.0%}"],
             src + " H2 hot decile coverage", r"touches a median of ")
