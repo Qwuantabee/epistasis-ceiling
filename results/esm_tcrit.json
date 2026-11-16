@@ -1,0 +1,136 @@
+{
+  "question": "Which ESM verdicts depend on using 2 SE rather than a t critical value over K folds?",
+  "k_folds": 5,
+  "df": 4,
+  "t_crit_0975": 2.7764451051977934,
+  "coverage_of_2se_interval": 0.8838834764831844,
+  "preregistered_rule": "delta +/- 2 SE (esm_scale.py VERDICT_RULE, committed in b323e50); unchanged",
+  "t_rule": "the same decision rule with delta +/- t(0.975, K-1) SE",
+  "cells": {
+    "primary:a": {
+      "run": "primary",
+      "head": "a",
+      "fraction_of_eligible_pairs": 0.390412668885843,
+      "control": "shuffled",
+      "k_folds": 5,
+      "delta": -0.02931464103759156,
+      "se": 0.0344677828577855,
+      "interval_2se": [
+        -0.09825020675316255,
+        0.03962092467797944
+      ],
+      "verdict_2se_preregistered": "INCONCLUSIVE",
+      "interval_t": [
+        -0.12501254804011053,
+        0.0663832659649274
+      ],
+      "verdict_t": "INCONCLUSIVE",
+      "min_gain": 0.02
+    },
+    "primary:b": {
+      "run": "primary",
+      "head": "b",
+      "fraction_of_eligible_pairs": 0.390412668885843,
+      "control": "noise",
+      "k_folds": 5,
+      "delta": -0.01924845521844961,
+      "se": 0.01700741326343781,
+      "interval_2se": [
+        -0.05326328174532523,
+        0.014766371308426007
+      ],
+      "verdict_2se_preregistered": "NOT_SUPPORTED",
+      "interval_t": [
+        -0.06646860452579754,
+        0.027971694088898325
+      ],
+      "verdict_t": "INCONCLUSIVE",
+      "min_gain": 0.02
+    },
+    "primary:c": {
+      "run": "primary",
+      "head": "c",
+      "fraction_of_eligible_pairs": 0.390412668885843,
+      "control": "shuffled",
+      "k_folds": 5,
+      "delta": -0.026884936379327852,
+      "se": 0.03466046508360854,
+      "interval_2se": [
+        -0.09620586654654492,
+        0.042435993787889224
+      ],
+      "verdict_2se_preregistered": "INCONCLUSIVE",
+      "interval_t": [
+        -0.12311781500459182,
+        0.0693479422459361
+      ],
+      "verdict_t": "INCONCLUSIVE",
+      "min_gain": 0.02
+    },
+    "full:a": {
+      "run": "full",
+      "head": "a",
+      "fraction_of_eligible_pairs": 1.0,
+      "control": "shuffled",
+      "k_folds": 5,
+      "delta": -0.06920628416840438,
+      "se": 0.021845512973799452,
+      "interval_2se": [
+        -0.11289731011600329,
+        -0.025515258220805477
+      ],
+      "verdict_2se_preregistered": "NOT_SUPPORTED",
+      "interval_t": [
+        -0.12985915173504475,
+        -0.008553416601764001
+      ],
+      "verdict_t": "NOT_SUPPORTED",
+      "min_gain": 0.02
+    },
+    "full:b": {
+      "run": "full",
+      "head": "b",
+      "fraction_of_eligible_pairs": 1.0,
+      "control": "shuffled",
+      "k_folds": 5,
+      "delta": -0.051420816976347115,
+      "se": 0.03914345705325381,
+      "interval_2se": [
+        -0.12970773108285474,
+        0.026866097130160506
+      ],
+      "verdict_2se_preregistered": "INCONCLUSIVE",
+      "interval_t": [
+        -0.1601004767123737,
+        0.05725884275967947
+      ],
+      "verdict_t": "INCONCLUSIVE",
+      "min_gain": 0.02
+    },
+    "full:c": {
+      "run": "full",
+      "head": "c",
+      "fraction_of_eligible_pairs": 1.0,
+      "control": "noise",
+      "k_folds": 5,
+      "delta": -0.11293130109660894,
+      "se": 0.06345598898726819,
+      "interval_2se": [
+        -0.23984327907114533,
+        0.013980676877927437
+      ],
+      "verdict_2se_preregistered": "NOT_SUPPORTED",
+      "interval_t": [
+        -0.28911337111579477,
+        0.0632507689225769
+      ],
+      "verdict_t": "INCONCLUSIVE",
+      "min_gain": 0.02
+    }
+  },
+  "cells_whose_label_changes": [
+    "primary:b",
+    "full:c"
+  ],
+  "n_cells_supported_under_either_rule": 0
+}
