@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .envs/
+# ESM-2 window-embedding cache (scripts/esm_scale.py): regenerable, never committed
+results/emb_cache/

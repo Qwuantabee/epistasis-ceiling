@@ -1,0 +1,39 @@
+{
+  "status": "preregistered",
+  "note": "verdict rule and design fixed before any head was fitted; the run overwrites this file and records whether the rule it applied is identical to this one",
+  "preregistered_at": "2026-11-16T14:55:19-0600",
+  "verdict_rule": {
+    "fixed_before_run": "written to results/esm_scale.json by --preregister and committed before any head was fitted",
+    "statistic": "Spearman rho between a head's out-of-fold prediction and |centred additivity residual|, pooled over the pairs of one GroupKFold(5)-by-assay test fold (the esm_context.py definition); one value per fold, K = 5; the same folds for every head and control",
+    "controls": {
+      "noise": "N(0,1) features of the head's own width, one fixed draw per pair, through the identical pipeline",
+      "shuffled": "the head's own ESM feature rows permuted within assay (marginals kept, pair-to-feature link destroyed); prior, target and folds untouched"
+    },
+    "comparison": "C* = the control with the larger fold-mean rho; d_k = rho_head,k - rho_C*,k on the same fold k; Delta = mean(d), SE = sd(d, ddof=1) / sqrt(K)",
+    "SUPPORTED": "Delta - 2 SE > 0: the head beats the larger control by more than 2 standard errors",
+    "NOT_SUPPORTED": "not SUPPORTED and Delta + 2 SE < 0.02: the comparison rules out a gain of 0.02 rho over the larger control",
+    "INCONCLUSIVE": "neither (Delta +- 2 SE spans 0 and reaches 0.02), or any fold gave a non-finite rho",
+    "head_c": "head (c) keeps the free prior in every arm: rho(prior + ESM) is judged against rho(prior + control block), so its verdict is the verdict on the incremental rho of ESM over the free prior",
+    "min_gain": 0.02
+  },
+  "design": {
+    "question": "does ESM-2 wild-type window context rank |additivity residual| beyond what the free prior already gives, at corpus scale and with more than one head?",
+    "model": "facebook/esm2_t33_650M_UR50D",
+    "window_residues_each_side": 8,
+    "pooling": "mean of last_hidden_state over attention-masked tokens, <cls>/<eos> included (the esm_context.py pooling)",
+    "target": "|residual - assay mean(residual)|; heads fit log1p of it",
+    "free_prior": "|predicted - assay median(predicted)|, entered as log1p",
+    "cv": "GroupKFold(5) by assay, one fold set for all arms",
+    "heads": {
+      "a": "PCA(100) + RidgeCV on [Ea, Eb, |Ea-Eb|, Ea*Eb, log1p(sep)] - the shipped esm_context.py estimator: scaler and PCA fitted in the training fold, alpha by RidgeCV, log1p target, prediction clipped to the training range",
+      "b": "validated early-stopping linear model on the mean-pooled window embeddings only, [Ea, Eb] (2,560 wide, no product, no abs-diff, no sep): least squares on standardised features by full-batch gradient descent from w = 0, stopped at the step count (log grid 1..1e6) with the lowest MSE on 20% of the training assays held out (GroupShuffleSplit); same log1p target and clip as (a)",
+      "c": "supervised residual head with the free prior always present: RidgeCV on [log1p|predicted_c| (standardised, outside the PCA), PCA(100) of the (a) block]; the prior-only arm is RidgeCV on the prior alone; incremental rho = rho(prior + block) - rho(prior), per fold"
+    },
+    "controls": {
+      "noise": "N(0,1) features of the head's own width, one fixed draw per pair, through the identical pipeline",
+      "shuffled": "the head's own ESM feature rows permuted within assay (marginals kept, pair-to-feature link destroyed); prior, target and folds untouched"
+    },
+    "max_per_assay": 50000,
+    "seed": 0
+  }
+}
