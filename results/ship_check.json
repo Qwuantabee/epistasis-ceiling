@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "check": "fresh clone",
+      "ok": true,
+      "detail": "cloned"
+    },
+    {
+      "check": "pytest in clone",
+      "ok": true,
+      "detail": ".................                                                        [100%]"
+    },
+    {
+      "check": "claim audit",
+      "ok": true,
+      "detail": "23/23 claims found in the README",
+      "note": "runs with reduced coverage: results/pairs/ is gitignored, so the pooled claim is unverified in a clone"
+    },
+    {
+      "check": "figure links resolve",
+      "ok": true,
+      "detail": "1 distinct, missing=[]"
+    },
+    {
+      "check": "no duplicate figure embeds",
+      "ok": true,
+      "detail": "duplicates=[]"
+    },
+    {
+      "check": "no orphan figures",
+      "ok": true,
+      "detail": "orphans=[]"
+    },
+    {
+      "check": "MIT licence present",
+      "ok": true,
+      "detail": "LICENSE"
+    },
+    {
+      "check": "commit attribution",
+      "ok": true,
+      "detail": "emails=['200713142+Qwuantabee@users.noreply.github.com']"
+    },
+    {
+      "check": "no single file over 25 MB",
+      "ok": true,
+      "detail": "28 tracked files; big=[]"
+    }
+  ],
+  "head": "c44e0b6"
+}
