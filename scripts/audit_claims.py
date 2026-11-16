@@ -65,14 +65,17 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
         claims.append(("pairs in correlation claims",
                        [f"{int(big.n_pairs.sum()):,}"],
                        "assay_summary.csv n_pairs sum, >=500 pairs"))
-        # F4: AUC replaces the median split as the direction measure, and the
-        # split is still published so the two can be compared.
+        # F4: AUC replaces the median split, but the split is still published and
+        # must be labelled as the split it is.
         if "auc_direction" in big.columns:
             claims.append(("median AUC", [f"{big.auc_direction.median():.3f}"],
                            "assay_summary.csv auc_direction median"))
             claims.append(("median agreement, own medians",
                            [f"{big.direction_agreement_own_medians.median():.3f}"],
                            "assay_summary.csv own-median agreement"))
+            claims.append(("median agreement, observed-median split",
+                           [f"{big.direction_agreement.median():.3f}"],
+                           "assay_summary.csv direction_agreement"))
         # F1: the per-assay median beyond 2 sd, plus the bias that makes the pooled
         # version uninterpretable.
         if "frac_outside_2sd" in big.columns:
@@ -85,37 +88,24 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
                            [f"{big.bias_mean_sd.median():.2f}",
                             f"{abs(big.bias_mean_sd.median()):.2f}"],
                            "assay_summary.csv bias_mean_sd median"))
-        # F8: both denominators are published, so both are audited. The old README
-        # used 65 assays for coverage and 48 for correlations without saying so.
-        big = s[s.n_pairs >= 500]
-        claims.append(("assays in correlation claims", [str(len(big))],
-                       "assay_summary.csv rows with >=500 pairs"))
-        claims.append(("pairs in correlation claims",
-                       [f"{int(big.n_pairs.sum()):,}"],
-                       "assay_summary.csv n_pairs sum, >=500 pairs"))
-        # F4: AUC replaces the median split, but the split is still published and
-        # must be labelled as the split it is.
-        if "auc_direction" in big.columns:
-            claims.append(("median AUC", [f"{big.auc_direction.median():.3f}"],
-                           "assay_summary.csv auc_direction median"))
-            claims.append(("median agreement, own medians",
-                           [f"{big.direction_agreement_own_medians.median():.3f}"],
-                           "assay_summary.csv own-median agreement"))
-            claims.append(("median agreement, observed-median split",
-                           [f"{big.direction_agreement.median():.3f}"],
-                           "assay_summary.csv direction_agreement"))
-        # F1: the per-assay median beyond 2 sd, and the bias that makes the pooled
-        # version uninterpretable.
-        if "frac_outside_2sd" in big.columns:
-            claims.append(("per-assay median >2sd fraction",
-                           [f"{big.frac_outside_2sd.median():.1%}",
-                            f"{big.frac_outside_2sd.median():.3f}"],
-                           "assay_summary.csv frac_outside_2sd median"))
-        if "bias_mean_sd" in big.columns:
-            claims.append(("median residual bias",
-                           [f"{big.bias_mean_sd.median():.2f}",
-                            f"{abs(big.bias_mean_sd.median()):.2f}"],
-                           "assay_summary.csv bias_mean_sd median"))
+        # THE POOLED FRACTIONS, from integer counts in a COMMITTED file. These used
+        # to be checkable only from results/pairs/ (101 MB, gitignored), so a fresh
+        # clone could not verify them and the audit had to announce reduced
+        # coverage. Counting rows makes the same numbers reproducible with nothing
+        # but assay_summary.csv, which is why the counts are published beside the
+        # fractions rather than instead of them.
+        if {"n_outside_2sd", "n_outside_2sd_centred", "n_within_1sd"} <= \
+                set(big.columns):
+            pooled = float(big.n_outside_2sd.sum() / big.n_pairs.sum())
+            claims.append(("pooled >2sd fraction",
+                           [f"{pooled:.1%}", f"{pooled:.3f}"],
+                           "assay_summary.csv n_outside_2sd / n_pairs, >=500 "
+                           "pairs (integer counts)"))
+            pooled_c = float(big.n_outside_2sd_centred.sum() / big.n_pairs.sum())
+            claims.append(("pooled >2sd fraction, centred",
+                           [f"{pooled_c:.1%}", f"{pooled_c:.3f}"],
+                           "assay_summary.csv n_outside_2sd_centred / n_pairs, "
+                           ">=500 pairs"))
 
     if inv_p.exists():
         i = json.loads(inv_p.read_text())

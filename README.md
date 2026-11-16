@@ -105,9 +105,10 @@ median:
 
 | how it is counted | value |
 |---|---|
-| pooled share beyond 2 sd — **what this README used to call 40.8%** | 40.9% |
+| pooled share beyond 2 sd — **what this README used to call 40.8%** | 40.9% (332,751 / 813,014) |
 | per-assay **median** share beyond 2 sd | 12.6% |
 | per-assay median after centring each assay | 4.6% |
+| pooled share beyond 2 sd, centred | 5.8% |
 
 The honest figure is the middle row, **12.6%**;
 the 41% was that number blended with the model's systematic bias. What additivity
@@ -266,9 +267,14 @@ as well as on a broken function.
   who came for "which pairs will break" should leave without an answer; what the
   repo establishes is the size of the gap (AUC 0.884 ranking, 12.6% of pairs
   beyond 2 sd, marked bias) and that three obvious ways to close it do not work.
-- **`results/pairs/` is gitignored** (101 MB, reproducible). A fresh clone can run
-  every test and the claim audit, but the audit reports reduced coverage for the
-  pooled fraction rather than a clean pass - see `tests/test_claims.py`.
+- **`results/pairs/` is gitignored** (101 MB, reproducible). That used to mean a
+  fresh clone could not check the pooled fraction and the audit had to announce
+  reduced coverage. `assay_summary.csv` now carries the integer counts
+  (`n_outside_2sd`, `n_outside_2sd_centred`, `n_within_1sd`) beside every
+  fraction, so the pooled number is `n_outside_2sd.sum() / n_pairs.sum()` —
+  computable in a clone from a committed file, and exact where a fraction times a
+  row count only round-trips by luck. `tests/test_claims.py` still guards that a
+  claim which stops being checkable is named rather than dropped.
 - **Two assays were skipped** (F7YBW8_MESOW_Aakre_2015, GCN4_YEAST_Staller_2018)
   for having too few singles or doubles by the stated threshold; see
   `results/skipped.txt`.

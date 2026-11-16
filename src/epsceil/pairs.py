@@ -260,6 +260,15 @@ def summarise_table(t: pd.DataFrame, assay: str,
         "frac_within_1sd_centred": float(np.mean(np.abs(rc) <= 1.0)),
         "frac_outside_2sd": float(np.mean(np.abs(r) > 2.0)),
         "frac_outside_2sd_centred": float(np.mean(np.abs(rc) > 2.0)),
+        # INTEGER COUNTS ALONGSIDE THE FRACTIONS, so a claim about the POOLED
+        # corpus is checkable from this committed CSV alone. results/pairs/ is
+        # gitignored, so a fresh clone could not recompute the pooled fraction
+        # and the audit had to announce reduced coverage. Counts make the pooled
+        # number n_outside/n_pairs without the 101 MB of pair tables, and they
+        # are exact where a fraction times a row count only round-trips by luck.
+        "n_outside_2sd": int((np.abs(r) > 2.0).sum()),
+        "n_outside_2sd_centred": int((np.abs(rc) > 2.0).sum()),
+        "n_within_1sd": int((np.abs(r) <= 1.0).sum()),
         "residual_scale_sd": float(t.residual_scale_sd.iloc[0])
         if "residual_scale_sd" in t.columns else float("nan"),
         "residual_raw_sd": float(t.residual_raw.std(ddof=1))
