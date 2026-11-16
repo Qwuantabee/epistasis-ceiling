@@ -1,0 +1,263 @@
+{
+  "n_assays_total": 65,
+  "n_assays_corpus": 48,
+  "n_assays_heldout": 17,
+  "n_pairs_heldout": 5348,
+  "corpus_median": {
+    "bias_sd": -0.9381523839258121,
+    "frac_outside_2sd": 0.12617479721996444,
+    "auc": 0.8843817528883788
+  },
+  "verdict_rule": "SUPPORTED when the corpus median lies inside the held-out group's bootstrap 95% interval and the group's median has the corpus sign; NOT_SUPPORTED when the interval excludes the corpus median; INCONCLUSIVE when the interval is wider than the effect (group n < 8, or interval spanning zero and the corpus median with it).",
+  "bootstrap": {
+    "reps": 20000,
+    "seed": 20261116,
+    "method": "percentile"
+  },
+  "H1_lab_family": {
+    "question": "Does the published bias depend on WHICH lab the assay came from?",
+    "hypothesis": "the bias differs between the dominant lab and the rest",
+    "corpus_median": {
+      "bias_sd": -0.9381523839258121,
+      "frac_outside_2sd": 0.12617479721996444,
+      "auc": 0.8843817528883788
+    },
+    "Tsuboyama": {
+      "group": "Tsuboyama (48-assay corpus)",
+      "n_assays": 33,
+      "n_pairs": 45484,
+      "bias_sd": {
+        "median": -0.7850327347467413,
+        "ci95": [
+          -0.9690383099044616,
+          -0.3515820917045801
+        ]
+      },
+      "verdict_vs_corpus": {
+        "bias_sd": "SUPPORTED",
+        "frac_outside_2sd": "SUPPORTED",
+        "auc": "SUPPORTED"
+      },
+      "frac_outside_2sd": {
+        "median": 0.1004016064257028,
+        "ci95": [
+          0.0539730134932533,
+          0.1380597014925373
+        ]
+      },
+      "auc": {
+        "median": 0.8389283518885322,
+        "ci95": [
+          0.8260772082270408,
+          0.8861415678376967
+        ]
+      }
+    },
+    "other_labs": {
+      "group": "other labs (15 assays)",
+      "n_assays": 15,
+      "n_pairs": 767530,
+      "bias_sd": {
+        "median": -1.5010073151699856,
+        "ci95": [
+          -1.8660883302230773,
+          -1.268256421953313
+        ]
+      },
+      "verdict_vs_corpus": {
+        "bias_sd": "NOT_SUPPORTED",
+        "frac_outside_2sd": "NOT_SUPPORTED",
+        "auc": "NOT_SUPPORTED"
+      },
+      "frac_outside_2sd": {
+        "median": 0.215764184069488,
+        "ci95": [
+          0.1578043778911727,
+          0.4467356403853014
+        ]
+      },
+      "auc": {
+        "median": 0.9408352855626066,
+        "ci95": [
+          0.9255296236705238,
+          0.9560625331374026
+        ]
+      }
+    },
+    "difference_Tsuboyama_minus_other": {
+      "bias_sd": {
+        "diff_median": 0.7565039516246878,
+        "ci95": [
+          0.3711711579871634,
+          1.2934103994957424
+        ],
+        "p_two_sided": 0.0004
+      },
+      "frac_outside_2sd": {
+        "diff_median": -0.12431553877190589,
+        "ci95": [
+          -0.3463340339595986,
+          -0.03950080646260129
+        ],
+        "p_two_sided": 0.0013
+      },
+      "auc": {
+        "diff_median": -0.09397766990705658,
+        "ci95": [
+          -0.1257124676413477,
+          -0.04100759691750144
+        ],
+        "p_two_sided": 0.0105
+      }
+    },
+    "verdict": "SUPPORTED",
+    "reading": "The groups differ in the bias (p from the bootstrap of the median difference) and in the beyond-2-sd share, so the corpus median is a MIXTURE description: not wrong, but not a constant of double mutants either. Both groups keep the same sign, and both rank well."
+  },
+  "H2_excluded_small_assays": {
+    "group": "held out: 17 assays under 500 pairs",
+    "n_assays": 17,
+    "n_pairs": 5348,
+    "bias_sd": {
+      "median": 0.5002618474604422,
+      "ci95": [
+        -0.8350833209918291,
+        1.010571148092146
+      ]
+    },
+    "verdict_vs_corpus": {
+      "bias_sd": "NOT_SUPPORTED",
+      "frac_outside_2sd": "SUPPORTED",
+      "auc": "SUPPORTED"
+    },
+    "frac_outside_2sd": {
+      "median": 0.1400560224089636,
+      "ci95": [
+        0.077562326869806,
+        0.5666666666666667
+      ]
+    },
+    "auc": {
+      "median": 0.8480321385977025,
+      "ci95": [
+        0.7546296296296297,
+        0.9196221203942
+      ]
+    },
+    "question": "Do the assays excluded from every published number agree with them?",
+    "included_in_any_published_number": false,
+    "authors": {
+      "Tsuboyama": 15,
+      "Chen": 1,
+      "Ding": 1
+    },
+    "reading": "These contributed nothing to the 12.6% / 0.884 / -0.94 sd medians, so they are the only out-of-sample check available without new data. The bias does NOT replicate: their median is positive where the corpus median is negative, and the interval spans zero. The RANKING number does replicate (AUC inside the corpus interval), which is the split a reader should take away - rank well, but do not trust the offset as a fixed number.",
+    "verdict": "bias: NOT_SUPPORTED; ranking: SUPPORTED",
+    "hypothesis": "the published bias and ranking both hold out of sample",
+    "verdict_SUPPORTED_means": "the held-out group's median agrees with the corpus median"
+  },
+  "H3_leave_one_lab_out": {
+    "question": "Does dropping any single lab move a published median?",
+    "corpus_median": {
+      "bias_sd": -0.9381523839258121,
+      "frac_outside_2sd": 0.12617479721996444,
+      "auc": 0.8843817528883788
+    },
+    "leave_one_lab_out": [
+      {
+        "excluded_lab": "Araya",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9690383099044616,
+        "frac_outside_2sd_median": 0.1301939058171745,
+        "auc_median": 0.8858789552002936
+      },
+      {
+        "excluded_lab": "Faure",
+        "n_excluded": 2,
+        "bias_sd_median": -0.9021758609566561,
+        "frac_outside_2sd_median": 0.12424873862287295,
+        "auc_median": 0.8815268723345209
+      },
+      {
+        "excluded_lab": "Melamed",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.882884550576464
+      },
+      {
+        "excluded_lab": "Olson",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.882884550576464
+      },
+      {
+        "excluded_lab": "Pokusaeva",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9690383099044616,
+        "frac_outside_2sd_median": 0.1301939058171745,
+        "auc_median": 0.8858789552002936
+      },
+      {
+        "excluded_lab": "Sarkisyan",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.8858789552002936
+      },
+      {
+        "excluded_lab": "Seuma",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.882884550576464
+      },
+      {
+        "excluded_lab": "Sinai",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.882884550576464
+      },
+      {
+        "excluded_lab": "Somermeyer",
+        "n_excluded": 3,
+        "bias_sd_median": -0.8970852639661496,
+        "frac_outside_2sd_median": 0.1183035714285714,
+        "auc_median": 0.8801691940925778
+      },
+      {
+        "excluded_lab": "Tsuboyama",
+        "n_excluded": 33,
+        "bias_sd_median": -1.5010073151699856,
+        "frac_outside_2sd_median": 0.215764184069488,
+        "auc_median": 0.9408352855626066
+      },
+      {
+        "excluded_lab": "Weng",
+        "n_excluded": 2,
+        "bias_sd_median": -0.9021758609566561,
+        "frac_outside_2sd_median": 0.12022963002566289,
+        "auc_median": 0.8815268723345209
+      },
+      {
+        "excluded_lab": "Wu",
+        "n_excluded": 1,
+        "bias_sd_median": -0.9072664579471628,
+        "frac_outside_2sd_median": 0.1221556886227544,
+        "auc_median": 0.8858789552002936
+      }
+    ],
+    "bias_range": [
+      -1.5010073151699856,
+      -0.8970852639661496
+    ],
+    "auc_range": [
+      0.8801691940925778,
+      0.9408352855626066
+    ],
+    "verdict": "INCONCLUSIVE",
+    "reading": "A ranking number that survives dropping any one lab is a corpus property; one that does not is that lab's."
+  },
+  "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python scripts/heldout.py"
+}

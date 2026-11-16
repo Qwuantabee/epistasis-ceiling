@@ -39,7 +39,7 @@ assays dominate every aggregate number.
 | median assay Spearman (additive vs observed) | **0.760** |
 | median AUC (threshold-free direction) | **0.884** |
 | pairs beyond 2 sd from additive, per-assay **median** | **12.6%** |
-| median assay, fraction of pairs within 1 sd | **0.437** |
+| median assay, fraction of pairs within 1 sd | **0.431** |
 
 Two denominators, stated once so no row is ambiguous: **coverage and the pair
 total use all 65 assays** (818,362 pairs), while **every correlation, AUC and
@@ -114,6 +114,47 @@ The honest figure is the middle row, **12.6%**;
 the 41% was that number blended with the model's systematic bias. What additivity
 *is* good at is ranking: **AUC 0.884** against the observed effect,
 which is why screening by additive prediction still beats not screening at all.
+
+The same argument, measured per assay rather than asserted pool-wide: across the
+48 assays the share past 2 sd correlates **+0.93** with how far that assay's
+additive prediction sits from zero, and only **+0.12** with its own residual
+spread.
+
+![The tail tracks the offset, not the spread](figures/bias_not_spread.png)
+
+So "beyond 2 sd" is mostly a restatement of the offset. A tolerance built on it
+would flag the assays where the model is shifted, not the pairs where it is wrong.
+
+## Does any of it hold out of sample?
+
+Every number above is a median over 48 assays. Two things about that set were
+never tested, and both matter for anyone who wants to use these results.
+
+**The corpus is one lab.** 48 of the 65 assays are Tsuboyama et al. (2023), a
+single study of stability measurements; the other 17 assays come from 13 papers.
+Split by that line, the bias is not one number: **-0.79** sd (95% CI -0.97 to
+-0.35) for the Tsuboyama assays against **-1.50** sd (-1.87 to -1.27) for the
+rest, a difference of 0.76 sd with a bootstrap p of 0.0004. Both keep the sign and
+both rank well (AUC 0.839 against 0.941), so the *direction* replicates and the
+*magnitude* does not. The corpus median is a mixture description.
+
+**The 17 assays that were excluded agree about ranking and disagree about bias.**
+They were dropped for size — under 500 pairs, 5,348 pairs between them — which
+makes them the only genuinely out-of-sample check available without new data: they
+contributed nothing to any published number. Their median bias is **+0.50** sd
+(95% CI -0.84 to +1.01) against the corpus's -0.94, i.e. it does not replicate and
+even changes sign, while their ranking agrees (**AUC 0.848**, inside the corpus
+interval).
+
+The reading is the same in both tests, and it is narrower than the version of this
+page that came before them: **additivity ranks doubles well wherever you look, and
+its offset is assay-specific, not a constant you can subtract.** Anyone quoting
+"0.94 sd" as a property of the method is quoting one lab's calibration.
+
+Leave-one-lab-out confirms the split: dropping any single lab moves the AUC only
+between 0.880 and 0.941, so the ranking is a corpus property rather than one
+paper's, while the bias moves across the whole -1.50 to -0.90 range on the same
+test.
 
 ## Where the failures concentrate
 

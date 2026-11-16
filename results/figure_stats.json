@@ -1,0 +1,10 @@
+{
+  "bias_vs_tail_fraction": {
+    "n_assays": 48,
+    "pearson_abs_bias": 0.9333345581470234,
+    "pearson_residual_sd": 0.12012633245305493,
+    "reading": "share beyond 2 sd tracks |mean bias|, not residual spread",
+    "provenance": "scripts/make_figures.py fig_bias_not_spread()",
+    "source": "results/assay_summary.csv rows with >=500 pairs"
+  }
+}

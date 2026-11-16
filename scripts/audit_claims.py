@@ -83,6 +83,14 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
                            [f"{big.frac_outside_2sd.median():.1%}",
                             f"{big.frac_outside_2sd.median():.3f}"],
                            "assay_summary.csv frac_outside_2sd median"))
+        if "frac_within_1sd" in big.columns:
+            # Audited on the SAME 48-assay denominator the paragraph promises. The
+            # README quoted 0.437, which is the all-65 median: the row sat in a
+            # table whose text says every fraction uses the 48-assay set, so the
+            # number and its stated denominator disagreed by construction.
+            claims.append(("median within 1sd fraction",
+                           [f"{big.frac_within_1sd.median():.3f}"],
+                           "assay_summary.csv frac_within_1sd median, >=500 pairs"))
         if "bias_mean_sd" in big.columns:
             claims.append(("median residual bias",
                            [f"{big.bias_mean_sd.median():.2f}",
@@ -219,6 +227,82 @@ def build_claims() -> tuple[list[tuple[str, list[str], str]], list[str]]:
         if sel.get("pairs_used"):
             claims.append(("esm pairs used", [f"{int(sel['pairs_used']):,}"],
                            "esm_context.json selection"))
+
+    # --- held-out tests (scripts/heldout.py) ---------------------------------
+    # Every number in the "Does any of it hold out of sample?" section is in the
+    # artefact, including the intervals, because an interval is the claim there:
+    # the point of the section is that the bias does NOT replicate, and a bare
+    # median without its interval cannot show that.
+    hold_p = RES / "heldout.json"
+    if hold_p.exists():
+        h = json.loads(hold_p.read_text())
+        ts = (h.get("H1_lab_family") or {}).get("Tsuboyama") or {}
+        ot = (h.get("H1_lab_family") or {}).get("other_labs") or {}
+        for grp, tag in ((ts, "Tsuboyama"), (ot, "other labs")):
+            b = (grp.get("bias_sd") or {})
+            if b.get("median") is not None:
+                claims.append((f"heldout bias {tag}",
+                               [f"{b['median']:+.2f}", f"{b['median']:.2f}",
+                                f"{abs(b['median']):.2f}"],
+                               f"heldout.json H1 {tag} bias_sd median"))
+            ci = b.get("ci95") or []
+            if len(ci) == 2:
+                claims.append((f"heldout bias CI {tag}",
+                               [f"{ci[0]:+.2f}", f"{ci[1]:+.2f}"],
+                               f"heldout.json H1 {tag} bias_sd ci95"))
+            a = (grp.get("auc") or {})
+            if a.get("median") is not None:
+                claims.append((f"heldout auc {tag}",
+                               [f"{a['median']:.3f}"],
+                               f"heldout.json H1 {tag} auc median"))
+        d = ((h.get("H1_lab_family") or {})
+             .get("difference_Tsuboyama_minus_other") or {}).get("bias_sd") or {}
+        if d.get("diff_median") is not None:
+            claims.append(("heldout bias difference",
+                           [f"{d['diff_median']:.2f}",
+                            f"{abs(d['diff_median']):.2f}"],
+                           "heldout.json H1 bias difference"))
+        if d.get("p_two_sided") is not None:
+            claims.append(("heldout bias difference p",
+                           [f"{d['p_two_sided']:.4f}"],
+                           "heldout.json H1 bootstrap p"))
+        sh = h.get("H2_excluded_small_assays") or {}
+        sb = sh.get("bias_sd") or {}
+        if sb.get("median") is not None:
+            claims.append(("heldout excluded bias",
+                           [f"{sb['median']:+.2f}", f"{sb['median']:.2f}"],
+                           "heldout.json H2 bias_sd median"))
+        sci = sb.get("ci95") or []
+        if len(sci) == 2:
+            claims.append(("heldout excluded bias CI",
+                           [f"{sci[0]:+.2f}", f"{sci[1]:+.2f}"],
+                           "heldout.json H2 bias_sd ci95"))
+        sa = (sh.get("auc") or {}).get("median")
+        if sa is not None:
+            claims.append(("heldout excluded auc", [f"{sa:.3f}"],
+                           "heldout.json H2 auc median"))
+        loo = h.get("H3_leave_one_lab_out") or {}
+        for key, label in (("auc_range", "loo auc range"),
+                           ("bias_range", "loo bias range")):
+            rng = loo.get(key) or []
+            if len(rng) == 2:
+                fmt = (lambda v: f"{v:.3f}") if key == "auc_range" \
+                    else (lambda v: f"{v:+.2f}")
+                claims.append((label, [fmt(rng[0]), fmt(rng[1])],
+                               f"heldout.json H3 {key}"))
+
+    # --- figure statistics (scripts/make_figures.py) -------------------------
+    # Quoted in the README next to the scatter, so they are checked like any other
+    # number rather than living only in a function's stdout.
+    fig_p = RES / "figure_stats.json"
+    if fig_p.exists():
+        f = (json.loads(fig_p.read_text()).get("bias_vs_tail_fraction") or {})
+        for key, label in (("pearson_abs_bias", "tail vs |bias| r"),
+                           ("pearson_residual_sd", "tail vs spread r")):
+            v = f.get(key)
+            if v is not None:
+                claims.append((label, [f"{v:+.2f}", f"{abs(v):.2f}"],
+                               f"figure_stats.json {key}"))
 
     return claims, unverifiable
 
