@@ -59,6 +59,10 @@ N_COMPONENTS = 100                        # the shipped PCA width
 MIN_GAIN = 0.02                           # smallest rho gain worth reporting
 GD_STEPS = np.unique(np.round(np.logspace(0, 6, 61)).astype(np.int64))
 MODES = ("esm", "noise", "shuffled")
+# "shuffled_all" is the shuffle as first implemented: it also moved log1p(sep),
+# which is not an ESM feature and carries signal, so it credited ESM with sep.
+# Kept for heads (a)/(c) as a sensitivity verdict, never as the primary control.
+SEP_MODES = ("shuffled_all",)
 NOISE_SEED = {"full": 11, "pooled": 13}
 
 VERDICT_RULE = {
@@ -335,7 +339,9 @@ class PairFeatures:
 
     layout "full":   [Ea, Eb, |Ea-Eb|, Ea*Eb, log1p(sep)]  (5,121 = shipped)
     layout "pooled": [Ea, Eb]                              (2,560, head b)
-    mode   "esm" | "shuffled" (rows permuted within assay) | "noise"
+    mode   "esm" | "noise" | "shuffled" (ESM columns permuted within assay;
+           log1p(sep) stays with its own pair, like the prior and the target) |
+           "shuffled_all" (sep permuted too - the first implementation)
 
     Noise is drawn per fixed chunk from seed + chunk id, so a pair sees the same
     noise in the mean, scatter and projection passes whatever else is selected.
@@ -343,7 +349,7 @@ class PairFeatures:
 
     def __init__(self, be, W, ia, ib, lsep, layout, mode, perm=None, seed=0,
                  chunk=4096):
-        assert layout in ("full", "pooled") and mode in MODES
+        assert layout in ("full", "pooled") and mode in MODES + SEP_MODES
         self.be, self.W, self.ia, self.ib = be, W, ia, ib
         self.lsep = np.asarray(lsep, dtype=np.float32)
         self.layout, self.mode, self.perm = layout, mode, perm
@@ -352,7 +358,7 @@ class PairFeatures:
         self.dim = 4 * emb + 1 if layout == "full" else 2 * emb
         self.n = len(ia)
         self.n_chunks = int(math.ceil(self.n / self.chunk))
-        if mode == "shuffled" and perm is None:
+        if mode.startswith("shuffled") and perm is None:
             raise ValueError("shuffled mode needs a within-assay permutation")
 
     def bounds(self, c):
@@ -364,14 +370,14 @@ class PairFeatures:
             X = self.be.randn(self.seed * 1_000_003 + c, (hi - lo, self.dim))
             return self.be.rows(X, mask)
         rows = np.arange(lo, hi)[mask]
-        if self.mode == "shuffled":
-            rows = self.perm[rows]
-        Ea = self.be.take(self.W, self.ia[rows])
-        Eb = self.be.take(self.W, self.ib[rows])
+        erows = self.perm[rows] if self.mode.startswith("shuffled") else rows
+        Ea = self.be.take(self.W, self.ia[erows])
+        Eb = self.be.take(self.W, self.ib[erows])
         if self.layout == "pooled":
             return self.be.hstack([Ea, Eb])
+        srows = erows if self.mode == "shuffled_all" else rows
         return self.be.hstack([Ea, Eb, abs(Ea - Eb), Ea * Eb,
-                               self.be.put(self.lsep[rows][:, None])])
+                               self.be.put(self.lsep[srows][:, None])])
 
 
 def _chunks(src, sel):
@@ -519,14 +525,18 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
     src = {(lay, mode): PairFeatures(be, Wd, ia, ib, lsep, lay, mode, perm,
                                      seed=NOISE_SEED[lay] + seed, chunk=chunk)
            for lay in ("full", "pooled") for mode in MODES}
+    for mode in SEP_MODES:
+        src[("full", mode)] = PairFeatures(be, Wd, ia, ib, lsep, "full", mode, perm,
+                                           seed=NOISE_SEED["full"] + seed, chunk=chunk)
     prior = np.log1p(np.abs(prior_abs))
     everything = np.ones(N, bool)
     ylog = np.log1p(y)
-    rec = {"a": {m: [] for m in MODES}, "b": {m: [] for m in MODES},
-           "c": {m: [] for m in MODES}, "prior_only": []}
+    full_modes = MODES + SEP_MODES
+    rec = {"a": {m: [] for m in full_modes}, "b": {m: [] for m in MODES},
+           "c": {m: [] for m in full_modes}, "prior_only": []}
     prior2 = None if prior_alt_abs is None else np.log1p(np.abs(prior_alt_abs))
     if prior2 is not None:
-        rec["c_posthoc"] = {m: [] for m in MODES}
+        rec["c_posthoc"] = {m: [] for m in full_modes}
         rec["prior_only_posthoc"] = []
     from sklearn.model_selection import GroupShuffleSplit
     for k, (tr, te) in enumerate(folds):
@@ -554,7 +564,7 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
         val[tr[iva]] = True
         tem = np.zeros(N, bool)
         tem[te] = True
-        for mode in MODES:
+        for mode in full_modes:
             # heads (a) and (c): in-fold scaler + PCA of the 5,121-wide block
             s = src[("full", mode)]
             n_tr, mu = stream_mean(s, trm)
@@ -577,6 +587,8 @@ def run_heads(y, prior_abs, groups, W, ia, ib, lsep, be, folds, seed=0,
                 rec["c_posthoc"][mode].append(
                     {**fold_metrics(pred, y_te, y_tr, g_te), "alpha": alpha})
             del Z, Zc_tr, Zc_te
+            if mode not in MODES:
+                continue                         # head (b) has no sep column
             # head (b): early-stopped linear on [Ea, Eb]
             s = src[("pooled", mode)]
             n_t, mu = stream_mean(s, inner)
@@ -633,9 +645,10 @@ def summarise(rec: dict) -> dict:
     out = {}
     heads = ("a", "b", "c") + (("c_posthoc",) if rec.get("c_posthoc") else ())
     for h in heads:
-        rho = {m: [f["rho"] for f in rec[h][m]] for m in MODES}
+        modes = list(rec[h])
+        rho = {m: [f["rho"] for f in rec[h][m]] for m in modes}
         within = {m: float(np.mean([f["rho_within_assay_mean"] for f in rec[h][m]]))
-                  for m in MODES}
+                  for m in modes}
         out[h] = {
             "head": HEADS[h],
             "rho": rho,
@@ -645,6 +658,9 @@ def summarise(rec: dict) -> dict:
                                             "shuffled": rho["shuffled"]}),
             "per_fold": rec[h],
         }
+        if "shuffled_all" in rho:
+            out[h]["verdict_if_shuffle_also_moves_sep"] = verdict(
+                rho["esm"], {"noise": rho["noise"], "shuffled": rho["shuffled_all"]})
     for h, key in (("c", "prior_only"), ("c_posthoc", "prior_only_posthoc")):
         if h not in out:
             continue
@@ -653,7 +669,8 @@ def summarise(rec: dict) -> dict:
         out[h]["rho_prior_only_within_assay_mean"] = float(np.mean(
             [f["rho_within_assay_mean"] for f in rec[key]]))
         out[h]["incremental_rho_over_prior"] = {
-            m: _mean_se(np.asarray(out[h]["rho"][m]) - np.asarray(po)) for m in MODES}
+            m: _mean_se(np.asarray(out[h]["rho"][m]) - np.asarray(po))
+            for m in out[h]["rho"]}
         out[h]["prior_only_per_fold"] = rec[key]
     return out
 
@@ -946,7 +963,26 @@ def main(argv=None) -> int:
         "primary": primary,
         "sensitivity": runs[1:],
         "shipped_probe_for_comparison": shipped,
+        "deviations": [
+            "The shuffled control as first implemented (commits b323e50, 60690e8, "
+            "f35deca) permuted log1p(sep) along with the ESM block in heads (a)/(c); "
+            "VERDICT_RULE says the shuffle moves the head's ESM feature rows and "
+            "leaves everything else with its pair, and sep carries signal (within-"
+            "assay rho with |residual_c| about -0.02), so that control credited ESM "
+            "with sep. Fixed after an independent code review; the first "
+            "implementation is kept as mode shuffled_all and judged as "
+            "verdict_if_shuffle_also_moves_sep. The noise control is unchanged: "
+            "pure N(0,1) across the head's full width, as the rule states.",
+            "Head c_posthoc (prior divided by its assay's sd of predicted_c) was "
+            "added after the preregistered run; see design.heads.c_posthoc.",
+        ],
         "caveats": [
+            "|Ea-Eb| and Ea*Eb partly encode proximity: windows of pairs closer "
+            "than 17 residues overlap. The shuffled control keeps the true sep, so "
+            "distance alone cannot pass it, but heads (a)/(c) do not separate "
+            "window content from window overlap.",
+            "Noise is drawn per --chunk block: one fixed draw per pair within a "
+            "run, but a different --chunk draws different noise.",
             "WT-window features are identical for every substitution pair at the "
             "same two positions, so they can rank position pairs but not the "
             "substitutions within one; the free prior is substitution-specific.",

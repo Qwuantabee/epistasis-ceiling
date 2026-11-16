@@ -94,6 +94,31 @@ def test_shuffle_stays_within_assay_and_moves_rows():
     assert (perm[:50] != np.arange(50)).mean() > 0.5
 
 
+def test_shuffle_moves_esm_columns_and_leaves_sep_with_its_pair():
+    """Review finding: the first shuffle also moved log1p(sep), which is not an
+    ESM feature and carries signal, so the control lost what the ESM arm kept."""
+    rng = np.random.default_rng(5)
+    W = rng.normal(size=(10, 2)).astype(np.float32)
+    n = 40
+    ia, ib = rng.integers(0, 10, n), rng.integers(0, 10, n)
+    lsep = np.arange(n, dtype=np.float32)
+    groups = np.array(["a"] * 20 + ["b"] * 20)
+    perm = es.within_group_permutation(groups, 0)
+    be = es.NumpyBackend()
+    everything = np.ones(n, bool)
+
+    def rows(mode):
+        src = es.PairFeatures(be, W, ia, ib, lsep, "full", mode, perm, chunk=16)
+        return np.vstack([src.get(c, everything[lo:hi]) for c, lo, hi, _ in
+                          es._chunks(src, everything)])
+
+    X, Xall = rows("shuffled"), rows("shuffled_all")
+    assert np.array_equal(X[:, -1], lsep)                 # sep stays with its pair
+    assert np.array_equal(X[:, :2], W[ia[perm]])          # ESM rows moved
+    assert np.array_equal(X[:, :-1], Xall[:, :-1])
+    assert np.array_equal(Xall[:, -1], lsep[perm])        # the first implementation
+
+
 def test_noise_is_one_fixed_draw_per_pair_at_the_heads_width():
     rng = np.random.default_rng(3)
     W = rng.normal(size=(10, 4)).astype(np.float32)
@@ -300,6 +325,10 @@ def test_artefact_carries_the_scripts_rule_and_recomputes():
         if h != "c_posthoc":                    # post hoc never enters the headline
             assert v["verdict"] == doc["headline"]["verdicts"][h]
         assert math.isclose(v["delta"], H["verdict"]["delta"], abs_tol=1e-12)
+        if h != "b":                            # (b) has no sep column to move
+            v2 = es.verdict(H["rho"]["esm"], {"noise": H["rho"]["noise"],
+                                              "shuffled": H["rho"]["shuffled_all"]})
+            assert v2["verdict"] == H["verdict_if_shuffle_also_moves_sep"]["verdict"]
     assert set(doc["headline"]["verdicts"]) == {"a", "b", "c"}
     c = p["heads"]["c"]
     inc = np.array(c["rho"]["esm"]) - np.array(c["rho_prior_only"]["folds"])
