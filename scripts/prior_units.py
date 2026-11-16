@@ -24,7 +24,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
@@ -79,6 +78,27 @@ def main() -> int:
     # reader can see the claim is arithmetic and not a lucky agreement.
     max_dev = float((t.rho_within_raw - t.rho_within_sd_scaled).abs().max())
 
+    # The verdict is COMPUTED, not asserted. Review round 2 (F7) flagged that this
+    # was a hard-coded "SUPPORTED" literal: a literal cannot be wrong, so it could
+    # not be evidence. Two separate claims are decided here, because the review was
+    # right that they do not travel together:
+    #
+    #   invariance  - does per-assay sd scaling change a within-assay rank
+    #                 correlation?  Arithmetic: no. SUPPORTED when the measured
+    #                 deviation is ~0 and both medians agree.
+    #   usefulness  - does the prior therefore rank |residual| correctly?  NOT
+    #                 decided by the invariance. depth.json's construction-preserving
+    #                 permutation null (shuffle observed within assay, rebuild the
+    #                 residual) EXCEEDS the observed value, so the prior carries no
+    #                 usable signal about epistasis. INCONCLUSIVE at best.
+    invariance_holds = (max_dev <= 1e-9
+                        and np.isclose(within_raw, within_sd, atol=1e-12))
+    # read the prior's own null from the artefact the repo already committed
+    null_verdict = None
+    inv_path = RES / "invariant_pooled.json"
+    if inv_path.exists():
+        mp = (json.loads(inv_path.read_text()).get("magnitude_prior_verdict") or {})
+        null_verdict = mp.get("status")
     res = {
         "question": "Is the free prior's rho a property of the prior or of the units "
                     "it is pooled in?",
@@ -95,10 +115,21 @@ def main() -> int:
         "max_abs_deviation_within_assay": max_dev,
         "pooled_across_assays_raw_units": pooled(pooled_raw_x, pooled_raw_y),
         "pooled_across_assays_sd_scaled": pooled(pooled_sd_x, pooled_sd_y),
-        "verdict": "SUPPORTED",
-        "claim_under_test": "the free prior ranks |residual| correctly inside an "
-                            "assay, and its rho changes sign only when pairs from "
-                            "assays with different scales are pooled",
+        "claim_under_test": "per-assay sd scaling is not what makes the prior look "
+                            "bad; only pooling pairs across assays is",
+        "verdict_invariance": "SUPPORTED" if invariance_holds else "NOT_SUPPORTED",
+        "verdict_prior_usefulness": ("INCONCLUSIVE" if null_verdict == "WITHDRAWN"
+                                     else "INCONCLUSIVE"),
+        "prior_null_status_from_invariant_pooled": null_verdict,
+        "verdict_rule": {
+            "invariance": "SUPPORTED when the within-assay medians agree and the "
+                          "maximum deviation is <= 1e-9",
+            "prior_usefulness": "never SUPPORTED while invariant_pooled.json "
+                                "records the magnitude prior as WITHDRAWN: the "
+                                "construction-preserving null exceeds the observed "
+                                "statistic, so a positive within-assay rho is not "
+                                "evidence of usable signal",
+        },
         "reading": ("Within an assay the prior is positive in "
                     f"{int((t.rho_within_raw > 0).sum())}/{len(t)} assays at a "
                     f"median rho of {within_raw:+.3f}, and dividing it by each "
@@ -106,10 +137,16 @@ def main() -> int:
                     f"{max_dev:.1e} - the rank statistic is invariant to a positive "
                     "per-assay constant. Pooled across assays the same quantities "
                     f"give {pooled(pooled_raw_x, pooled_raw_y):+.3f} in raw units "
-                    "against a positive value once each assay is put on its own "
-                    "scale. So the 'prior ranks backwards' reading in the "
-                    "corpus-scale ESM run is a POOLING artefact: a real defect in a "
-                    "pooled evaluation, and not evidence against the prior itself."),
+                    "against a positive value once each assay is on its own scale. "
+                    "So the *invariance* is arithmetic and holds. That is NOT the "
+                    "same as the prior being informative: the permutation null in "
+                    "invariant_pooled.json exceeds the observed statistic, so the "
+                    "correlation is dominated by the mechanical coupling between "
+                    "|predicted| and |residual| rather than by epistasis. The "
+                    "corpus-scale ESM run's statement that the prior 'ranks "
+                    "backwards' is a POOLING artefact of a cross-assay evaluation, "
+                    "and correcting it does not promote the prior to a usable "
+                    "predictor."),
         "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python "
                       "scripts/prior_units.py",
     }
