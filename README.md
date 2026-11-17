@@ -1,5 +1,9 @@
 # How far do single-mutant measurements get you on a double mutant?
 
+[![tests](https://github.com/Qwuantabee/epistasis-ceiling/actions/workflows/tests.yml/badge.svg)](https://github.com/Qwuantabee/epistasis-ceiling/actions/workflows/tests.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Qwuantabee/epistasis-ceiling/blob/master/LICENSE)
+[![python](https://img.shields.io/badge/python-3.12-blue.svg)](https://github.com/Qwuantabee/epistasis-ceiling/blob/master/pyproject.toml)
+
 **On the 48 ProteinGym assays with at least 500 measured double mutants (813,014
 pairs), adding the two single-mutant effects ranks the double correctly — median
 AUC 0.884.** An earlier version also called the additive prediction biased by a
