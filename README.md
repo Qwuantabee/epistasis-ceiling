@@ -180,7 +180,13 @@ Within the 48-assay subset that split is 33 against 15. Both groups rank well
 above chance, but not at one level: AUC **0.839** for the 33 Tsuboyama assays
 against **0.941** for the 15 others, and the artefact's own verdict for the other
 labs' AUC against the corpus median is **NOT_SUPPORTED** (their interval, 0.926 to
-0.956, excludes 0.884). Under the median centring the two groups' bias medians also
+0.956, excludes 0.884; percentile bootstrap, 20,000 reps, seed 20261116 as
+recorded in `heldout.json`). **That verdict depends on the seed.** With 15 assays
+the bootstrap median can only land on a few of the 15 AUCs, and the lower bound
+flips between the fifth-lowest (above 0.884) and the fourth-lowest (below it).
+Re-running the same function under other seeds, most intervals contain the
+corpus median and the verdict becomes SUPPORTED. Read it as "the other labs rank
+at least as well", not as a measured difference in level. Under the median centring the two groups' bias medians also
 differ, **-0.79** against **-1.50** sd (bootstrap p 0.0004), but that is a
 difference between centring constants rather than labs: the Tsuboyama median
 becomes +1.15 under wild type = 0, and the other labs' wild-type score is not in
@@ -379,7 +385,8 @@ was actually needed, and the earlier ESM numbers were withdrawn.
 - **Distance alone**: ρ = -0.03, MAE worse than a constant by 0.086 sd. Nothing.
 - **ESM-2 (650M) alone**, window embeddings of both mutated positions plus their
 difference, product and sequence separation: ρ = **-0.003 ± 0.049**, against a
-**pure-noise control of +0.007 ± 0.014** run through the identical pipeline. MAE
+**pure-noise control of +0.007 ± 0.014** run through the identical pipeline (both
+mean ± sd across the 5 folds). MAE
 is 2% worse than predicting the training median. Sequence context carries no
 usable signal here.
 - **ESM-2 + the free prior**: ρ = -0.007, i.e. **worse than the prior alone
@@ -430,7 +437,8 @@ two of the three NOT_SUPPORTED cells become INCONCLUSIVE.
 Head (a) scores +0.026 against a shuffled control of +0.055; (b) -0.017 against
 +0.002; (c) +0.031 against +0.058. The nominal gain of ESM over the free prior is
 **+0.154 ± 0.084** — but shuffling the ESM rows within an assay gives
-**+0.181 ± 0.094**, *more*, so that gain comes from knowing which assay a pair
+**+0.181 ± 0.094**, *more* (here ± is the standard error over the 5 folds, not
+the sd used above), so that gain comes from knowing which assay a pair
 belongs to, not from the pair. Only head (a) at full corpus excludes a 0.02 gain
 under both rules; the other five cells cannot exclude one at t(4). The null is a
 statement about this pipeline at corpus scale with five folds of power, not a
@@ -449,6 +457,10 @@ put on its own scale. A pooled rho that goes negative here is measuring the
 pooling, not the prior.
 
 ## Reproducing
+
+Expected runtime: the audit and the tests finish in under a minute on a fresh
+clone. The full rebuild needs raw ProteinGym, and a GPU for step 8; the step
+times the artefacts record are under "How long" below.
 
 ```bash
 pip install -r requirements.txt
@@ -604,4 +616,19 @@ tests/test_esm_scale.py     the ESM verdict rule and its controls
 tests/test_position_holdout.py  both holdout verdicts re-derived from per-assay rows
 ```
 
-MIT licence for this repository's own code. ProteinGym data keeps its own terms.
+MIT licence for this repository's own code. ProteinGym data, the ESM-2 weights
+and UniProt keep their own terms; see [NOTICE](NOTICE).
+
+## Part of a set
+
+Six repos, one method: take the number a field reports, measure what a practitioner uses, publish
+the gap.
+
+- [admet-split-truth](https://github.com/Qwuantabee/admet-split-truth): does a validation split predict error on the next compounds?
+- [mlip-fidelity](https://github.com/Qwuantabee/mlip-fidelity): do ML potentials rank near-degenerate conformers correctly?
+- epistasis-ceiling: do single-mutant effects add up on a double mutant?
+- [variant-effect-prediction](https://github.com/Qwuantabee/variant-effect-prediction): does a cleaner assay target help zero-shot ESM-2?
+- [single-cell-de](https://github.com/Qwuantabee/single-cell-de): are cells replicates?
+- [enzyme-kinetics](https://github.com/Qwuantabee/enzyme-kinetics): how wrong is a Lineweaver-Burk Km?
+
+Overview: https://github.com/Qwuantabee

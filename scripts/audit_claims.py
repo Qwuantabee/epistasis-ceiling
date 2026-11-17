@@ -283,6 +283,12 @@ def build_claims(res: Path = RES) -> tuple:
         add("pooled >2sd count", [f"{n2:,}"], src + " n_outside_2sd sum",
             cell(r"pooled share beyond 2 sd \u2014 \*\*what this README used to call "
                  r"40\.8%\*\*", 1, r"[^|(\n]*\("))
+        # the denominator of the same cell: a mutation sweep showed 813,014 could be
+        # changed here and the audit still passed (it was anchored only elsewhere)
+        add("pooled >2sd denominator", [f"{int(big.n_pairs.sum()):,}"],
+            src + " n_pairs sum, >=500 pairs",
+            cell(r"pooled share beyond 2 sd — \*\*what this README used to call "
+                 r"40\.8%\*\*", 1, r"[^|(\n]*\([\d,]+ / "))
         pooled_c = big.n_outside_2sd_centred.sum() / big.n_pairs.sum()
         add("pooled >2sd fraction, centred", [f"{pooled_c:.1%}"],
             src + " n_outside_2sd_centred / n_pairs",
