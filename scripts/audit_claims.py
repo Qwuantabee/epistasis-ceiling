@@ -964,9 +964,23 @@ def estimator_problems(readme: str) -> list[str]:
     return problems
 
 
+def published_text(root: Path = ROOT, readme: str | None = None) -> str:
+    """README.md, then every docs/*.md in name order: all the pages a reader is
+    sent to from the README. Claims are checked on this text, so a section moved
+    out of the README keeps its guard. `readme` replaces README.md only (the
+    docs pages are still appended). Line numbers in problems count from the top
+    of this concatenation."""
+    parts = [Path(readme).read_text() if readme else (root / "README.md").read_text()]
+    for p in sorted((root / "docs").glob("*.md")):
+        parts.append(f"<!-- {p.relative_to(root).as_posix()} -->\n" + p.read_text())
+    return "\n".join(parts)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--readme", default=str(ROOT / "README.md"))
+    ap.add_argument("--readme", default=None,
+                    help="README to check in place of README.md; docs/*.md are "
+                         "always appended")
     ap.add_argument("--results", default=str(RES),
                     help="artefact directory (tests point this at a damaged copy)")
     ap.add_argument("--strict", action="store_true",
@@ -974,7 +988,7 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
-    readme = Path(args.readme).read_text()
+    readme = published_text(ROOT, args.readme)
     claims, missing = build_claims(Path(args.results))
     out = audit(readme, claims, strict=args.strict)
     n_anch = len(claims) - len(out["unanchored"])

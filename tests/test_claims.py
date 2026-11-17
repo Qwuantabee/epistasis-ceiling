@@ -15,6 +15,13 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def _published() -> str:
+    """README.md plus docs/*.md, the text the audit checks (audit_claims.published_text)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import audit_claims
+    return audit_claims.published_text(ROOT)
+
+
 def test_every_readme_number_matches_an_artefact():
     p = subprocess.run([sys.executable, str(ROOT / "scripts" / "audit_claims.py"),
                         "--strict"], capture_output=True, text=True, cwd=ROOT)
@@ -25,7 +32,7 @@ def test_every_readme_number_matches_an_artefact():
 def test_readme_embeds_each_figure_exactly_once():
     """An orphan figure is worse than none, and a doubled embed is a duplicate
     caption waiting to diverge (both happened in the previous project)."""
-    readme = (ROOT / "README.md").read_text()
+    readme = _published()
     import re
     embeds = re.findall(r"\]\((figures/[a-zA-Z0-9_]+\.png)\)", readme)
     for e in set(embeds):
@@ -36,7 +43,7 @@ def test_readme_embeds_each_figure_exactly_once():
 
 def test_every_figure_on_disk_is_embedded():
     figs = {f"figures/{p.name}" for p in (ROOT / "figures").glob("*.png")}
-    readme = (ROOT / "README.md").read_text()
+    readme = _published()
     orphans = sorted(f for f in figs if f not in readme)
     assert not orphans, f"figures exist but are not shown: {orphans}"
 
@@ -161,7 +168,7 @@ def audit_setup():
     ac = _audit_module()
     claims, missing = ac.build_claims()
     assert not missing, missing
-    readme = (ROOT / "README.md").read_text()
+    readme = _published()
     base = ac.audit(readme, claims, strict=True)
     assert base["ok"], "the unmutated README must pass, or the mutation test is vacuous: " \
         + "; ".join(base["problems"][:5] + base["estimator"][:3])
@@ -268,7 +275,7 @@ def test_esm_verdict_table_matches_the_artefact():
     artefact FAILS this test (it used to skip, which kept CI green)."""
     for name in ("esm_scale.json", "esm_tcrit.json"):
         assert (ROOT / "results" / name).exists(), f"results/{name} is required"
-    readme = (ROOT / "README.md").read_text()
+    readme = _published()
     assert _esm_table_problems(readme) == []
 
 
@@ -277,7 +284,7 @@ def test_esm_verdict_table_matches_the_artefact():
                                  "true words parked in a spare cell"])
 def test_esm_verdict_table_check_rejects_a_wrong_table(how):
     """The check above must catch the four mutations the old test let through."""
-    readme = (ROOT / "README.md").read_text()
+    readme = _published()
     lines = readme.split("\n")
     hi = next(i for i, l in enumerate(lines) if l.startswith("| head |"))
     ra = next(i for i, l in enumerate(lines) if l.startswith("| " + ESM_ROWS["b"]))
