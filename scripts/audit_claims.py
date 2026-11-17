@@ -51,6 +51,8 @@ REQUIRED_ARTEFACTS = (
     # Added with the round-2 holdout work: the README quotes numbers from both, so
     # losing either must fail the audit rather than silently shrink the checklist.
     "position_holdout.json", "monotone_fit.json",
+    # The 200-seed re-run of the other-labs AUC verdict (DESIGN.md rule).
+    "seed_sweep.json",
 )
 
 WINDOW = 90          # chars after an anchor in which its number must appear
@@ -868,6 +870,32 @@ def build_claims(res: Path = RES) -> tuple:
     for name in REQUIRED_ARTEFACTS:
         if not (res / name).exists() and name not in missing:
             missing.append(name)
+    # --- seed_sweep.json: the other-labs AUC verdict over 200 seeds ----------------
+    def seed_sweep(d):
+        src = "seed_sweep.json"
+        ag = need(d, "aggregate", src=src)
+        cnt = need(ag, "verdict_counts", src=src)
+        add("seed sweep n seeds", [str(need(ag, "n_seeds", src=src))],
+            src + " aggregate.n_seeds", r"Re-run over ")
+        add("seed sweep seeds SUPPORTED", [str(cnt.get("SUPPORTED", 0))],
+            src + " verdict_counts.SUPPORTED", r"gives SUPPORTED on \*\*")
+        add("seed sweep seeds NOT_SUPPORTED", [str(cnt.get("NOT_SUPPORTED", 0))],
+            src + " verdict_counts.NOT_SUPPORTED", r"and NOT_SUPPORTED on \*\*")
+        cl = need(ag, "clearance", src=src)
+        add("seed sweep clearance median",
+            _signed(need(cl, "median", src=src), "{:+.3f}"),
+            src + " clearance.median", r"0\.884\) has median \*\*")
+        add("seed sweep clearance p2.5",
+            _signed(need(cl, "p2_5", src=src), "{:+.3f}"),
+            src + " clearance.p2_5", r"and runs from \*\*")
+        add("seed sweep clearance p97.5",
+            _signed(need(cl, "p97_5", src=src), "{:+.3f}"),
+            src + " clearance.p97_5", r"and runs from \*\*[^*]+\*\* to\s+\*\*")
+        add("seed sweep aggregated verdict",
+            [need(ag, "verdict", src=src).split()[0]], src + " aggregate.verdict",
+            r"so the seed-aggregated verdict is ", kind="verdict")
+
+    block("seed_sweep.json", seed_sweep)
     return claims, sorted(set(missing))
 
 

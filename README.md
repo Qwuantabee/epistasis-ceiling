@@ -188,9 +188,13 @@ labs' AUC against the corpus median is **NOT_SUPPORTED** (their interval, 0.926 
 recorded in `heldout.json`). **That verdict depends on the seed.** With 15 assays
 the bootstrap median can only land on a few of the 15 AUCs, and the lower bound
 flips between the fifth-lowest (above 0.884) and the fourth-lowest (below it).
-Re-running the same function under other seeds, most intervals contain the
-corpus median and the verdict becomes SUPPORTED. Read it as "the other labs rank
-at least as well", not as a measured difference in level. Under the median centring the two groups' bias medians also
+Re-run over 200 fixed seeds (`results/seed_sweep.json`; the rule was committed
+in `DESIGN.md` before the run), the same function gives SUPPORTED on **131** of
+them and NOT_SUPPORTED on **69**. The clearance (the near end of the interval
+minus 0.884) has median **-0.004** across seeds and runs from **-0.004** to
+**+0.041** (2.5 to 97.5 %). Neither verdict holds on the 190 seeds the rule
+requires, so the seed-aggregated verdict is INCONCLUSIVE (seed-dependent).
+Read it as "the other labs rank at least as well", not as a measured difference in level. Under the median centring the two groups' bias medians also
 differ, **-0.79** against **-1.50** sd (bootstrap p 0.0004), but that is a
 difference between centring constants rather than labs: the Tsuboyama median
 becomes +1.15 under wild type = 0, and the other labs' wild-type score is not in
@@ -497,6 +501,7 @@ python scripts/monotone_fit.py --n-perm 5 --workers 6
 # 6. the held-out checks: one lab or many, and the assays excluded by size
 #    (--index defaults to $EPSCEIL_INDEX, then ../_data/DMS_substitutions.csv)
 python scripts/heldout.py --index <DMS_substitutions.csv>
+python scripts/seed_sweep.py     # the other-labs AUC verdict over seeds 0-199 (DESIGN.md)
 
 # 6b. both centring conventions, and the two-number recalibration
 #     (defaults: $EPSCEIL_DATA / $EPSCEIL_INDEX, then ../_data/)
@@ -607,6 +612,7 @@ scripts/alt_baseline.py     stronger baselines, out-of-fold, with permutation nu
 scripts/position_holdout.py whole-position-pair holdout of the position models
 scripts/monotone_fit.py     isotonic / polynomial global curve vs the position term
 scripts/heldout.py          one-lab-in-the-corpus and size-excluded assays
+scripts/seed_sweep.py       that verdict over 200 fixed seeds (rule in DESIGN.md)
 scripts/reference.py        both centring conventions; two-number recalibration
 scripts/prior_units.py      within-assay vs pooled: what a rho is measured over
 scripts/esm_context.py      the GPU probe, grouped CV by assay (4.4% sample)
