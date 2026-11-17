@@ -206,6 +206,42 @@ caveats, all measured, because the first version of this section overstated it:
 Flagging the hottest 10% of positions touches a median of **23%** of pairs (range
 1%–67%), so the operational promise is real but modest — not "at no extra cost".
 
+**Two harder tests, both of which cut the position result down.** The 0.333 above
+comes from a random pair split, so a held-out pair usually shares both of its
+positions with training pairs — the most favourable split available. Holding out
+**whole position pairs** (no position pair seen in training appears in test) and
+allowing a **monotone global nonlinearity** both shrink it:
+
+- **Whole-position-pair holdout** (`results/position_holdout.json`). Across all 48
+  assays position R² falls from **0.333** to **-0.134** (30/48 above their null;
+  verdict COLLAPSES) and the pair-rank-3 model falls just as far, 0.381 to -0.134.
+  Most of that collapse is arithmetic, not refutation: assays have a median of
+  **5.5** position pairs, and the split is bimodal — **9** assays hold only 2
+  position pairs, **23** hold 3–9, and **16** hold 10 or more. In the small bins the
+  held-out cells have positions the model never saw and it can
+  only predict the other cells' mean. **The informative stratum is the 16 assays
+  with 10 or more position pairs**, where every held-out position is seen in
+  training: there position keeps **60%** of its R², scoring **0.236** on the
+  random split and **0.142** on the whole-pair split; pair-rank-3 keeps **84%**,
+  scoring **0.241** and **0.201**. Both beat their null in **16/16** assays.
+
+- **Monotone global fit** (`results/monotone_fit.json`). If single-effect size
+  clusters by position, a global saturation or floor would produce
+  position-clustered residuals with no position-specific epistasis. Fitted
+  out-of-fold, a monotone (isotonic) transform of the additive prediction alone
+  removes **0.576** of the residual variance against position's **0.333** — so the
+  curve alone beats position head-to-head. In the paired comparison position sits
+  **-0.249** [-0.275, -0.196] below the monotone curve and is positive in only 6/48
+  assays. Allowing both, `position + isotonic` reaches **0.707**, and the position
+  term's own contribution once the curve is present is **0.047** [0.038, 0.069],
+  above its permutation null in **48/48** assays. That is **14%** of the 0.333.
+
+So the honest statement is narrower than "positions matter": **most of the
+position signal was a calibration curve, and a small position-specific part —
+about 0.05 of variance, 14% of the original figure — survives both tests.** The
+verdict in the artefact is SUPPORTED for that residual contribution and
+NOT_SUPPORTED for position beating the monotone curve; both readings are stored.
+
 **Residue identity: INCONCLUSIVE, and the earlier negative was wrong too.** With
 both substitution slots pooled (the earlier version read only slot `a`, an
 arbitrary and non-random half of each pair) and an exact binomial instead of a

@@ -48,6 +48,9 @@ REQUIRED_ARTEFACTS = (
     "assay_summary.csv", "invariant_pooled.json", "depth.json",
     "esm_context.json", "heldout.json", "figure_stats.json", "alt_baseline.json",
     "esm_scale.json", "esm_tcrit.json", "prior_units.json", "reference.json",
+    # Added with the round-2 holdout work: the README quotes numbers from both, so
+    # losing either must fail the audit rather than silently shrink the checklist.
+    "position_holdout.json", "monotone_fit.json",
 )
 
 WINDOW = 90          # chars after an anchor in which its number must appear
@@ -634,6 +637,109 @@ def build_claims(res: Path = RES) -> tuple:
             r"scored on the same metric \u2014 removes a median ",
             r"with no\s+positions removes ")
     block("reference.json", reference)
+
+    # --- position_holdout.json: whole-position-pair holdout ------------------------
+    def position_holdout(h):
+        src = "position_holdout.json"
+        pa = need(h, "position_pairs_per_assay", src=src)
+        add("holdout median position pairs", [f"{need(pa, 'median', src=src):.1f}"],
+            src + " position_pairs_per_assay.median",
+            r"assays have a median of\s+\*\*")
+        bins = need(pa, "assays_per_bin", src=src)
+        add("holdout assays in bin 2", [str(need(bins, "2", src=src))],
+            src + " assays_per_bin[2]",
+            r"position pairs, and the split is bimodal \u2014 \*\*")
+        add("holdout assays in bin 3-9", [str(need(bins, "3-9", src=src))],
+            src + " assays_per_bin[3-9]",
+            r"\*\* assays hold only 2\s+position pairs, \*\*")
+        add("holdout assays in bin >=10", [str(need(bins, ">=10", src=src))],
+            src + " assays_per_bin[>=10]",
+            r"\*\* hold 3\u20139, and \*\*")
+        sp = need(h, "summary", "position", src=src)
+        allb = need(sp, "all", src=src)
+        add("holdout position r2, random split",
+            [f"{need(allb, 'random_pair', 'median_r2', src=src):.3f}"],
+            src + " position.all.random_pair.median_r2",
+            r"assays position R\u00b2 falls from \*\*")
+        add("holdout position r2, whole-pair split",
+            _signed(need(allb, "whole_position_pair", "median_r2", src=src),
+                    "{:.3f}"),
+            src + " position.all.whole_position_pair.median_r2",
+            r"R\u00b2 falls from \*\*[\d.]+\*\* to \*\*")
+        add("holdout assays above null, all",
+            [str(need(allb, "whole_position_pair", "assays_above_null", src=src))],
+            src + " position.all.whole_position_pair.assays_above_null",
+            r"to \*\*-?[\d.]+\*\* \(")
+        ten = need(sp, ">=10", src=src)
+        add("holdout position keep share >=10",
+            [f"{round(100 * need(h, 'verdict', 'position', '>=10', 'ratio', src=src)):.0f}%"],
+            src + " verdict.position.>=10.ratio",
+            r"training: there position keeps \*\*")
+        add("holdout position r2 >=10 random",
+            [f"{need(ten, 'random_pair', 'median_r2', src=src):.3f}"],
+            src + " position.>=10.random_pair.median_r2",
+            r"keeps \*\*\d+%\*\* of its R\u00b2, scoring \*\*")
+        add("holdout position r2 >=10 whole",
+            [f"{need(ten, 'whole_position_pair', 'median_r2', src=src):.3f}"],
+            src + " position.>=10.whole_position_pair.median_r2",
+            r"on the\s+random split and \*\*")
+        r3 = need(h, "summary", "pair_rank3", ">=10", src=src)
+        add("holdout rank3 keep share >=10",
+            [f"{round(100 * need(h, 'verdict', 'pair_rank3', '>=10', 'ratio', src=src)):.0f}%"],
+            src + " verdict.pair_rank3.>=10.ratio",
+            r"split; pair-rank-3 keeps \*\*")
+        add("holdout rank3 r2 >=10 random",
+            [f"{need(r3, 'random_pair', 'median_r2', src=src):.3f}"],
+            src + " pair_rank3.>=10.random_pair.median_r2",
+            r"pair-rank-3 keeps \*\*\d+%\*\*,\s+scoring \*\*")
+        add("holdout rank3 r2 >=10 whole",
+            [f"{need(r3, 'whole_position_pair', 'median_r2', src=src):.3f}"],
+            src + " pair_rank3.>=10.whole_position_pair.median_r2",
+            r"scoring \*\*\d+\.\d+\*\* and \*\*")
+    block("position_holdout.json", position_holdout)
+
+    # --- monotone_fit.json: is "position" a calibration curve? ---------------------
+    def monotone_fit(m):
+        src = "monotone_fit.json"
+        models = need(m, "models", src=src)
+        by_name = {r["model"]: r for r in models}
+        add("monotone isotonic r2",
+            [f"{need(by_name['isotonic'], 'median_r2', src=src):.3f}"],
+            src + " models[isotonic].median_r2",
+            r"transform of the additive prediction alone\s+removes \*\*")
+        add("position r2 (monotone artefact)",
+            [f"{need(by_name['position'], 'median_r2', src=src):.3f}"],
+            src + " models[position].median_r2",
+            r"residual variance against position's \*\*")
+        add("position+isotonic r2",
+            [f"{need(by_name['position+isotonic'], 'median_r2', src=src):.3f}"],
+            src + " models[position+isotonic].median_r2",
+            r"`position \+ isotonic` reaches \*\*")
+        paired = need(m, "paired", src=src)
+        d32 = need(paired, "position_minus_isotonic (3-2)", src=src)
+        add("position minus isotonic",
+            _signed(need(d32, "median", src=src), "{:.3f}"),
+            src + " paired 3-2 median",
+            r"In the paired comparison position sits\s+\*\*")
+        add("position minus isotonic assays positive",
+            [str(need(d32, "assays_positive", src=src))],
+            src + " paired 3-2 assays_positive",
+            r"below the monotone curve and is positive in only ")
+        d42 = need(paired, "position+isotonic_minus_isotonic (4-2)", src=src)
+        add("position adds over isotonic",
+            _signed(need(d42, "median", src=src), "{:.3f}"),
+            src + " paired 4-2 median",
+            r"term's own contribution once the curve is present is \*\*")
+        add("position adds over isotonic, beats null",
+            [f"{round(need(d42, 'beats_null_share', src=src) * need(m, 'n_assays', src=src)):.0f}/{need(m, 'n_assays', src=src)}"],
+            src + " paired 4-2 beats_null_share x n_assays",
+            r"above its permutation null in \*\*")
+        surv = need(m, "position_share_surviving", src=src)
+        add("position share surviving",
+            [f"{round(100 * need(surv, 'median_D42_over_median_position_r2', src=src)):.0f}%"],
+            src + " median_D42_over_median_position_r2",
+            r"assays\. That is \*\*")
+    block("monotone_fit.json", monotone_fit)
 
     for name in REQUIRED_ARTEFACTS:
         if not (res / name).exists() and name not in missing:
