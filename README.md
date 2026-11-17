@@ -160,16 +160,11 @@ with how far that assay's additive prediction sits from zero.
 
 ![The tail tracks the offset](figures/bias_not_spread.png)
 
-**The right-hand panel of this figure is withdrawn; only the left one is
-evidence.** This line used to continue "sits from zero, and only **+0.12** with
-its own residual spread". That 0.12 is not a measurement. Every residual is divided
-by its assay's own sd, so the spread on that x-axis is 1 for all 48 assays by
-construction (the column holds 1 to within floating-point rounding, which is why
-the panel is a vertical line) and the correlation is with rounding error. The
-argument does not need it: once the spread is fixed at 1, the share past 2 sd can
-only move with the offset and the shape of the distribution, and the left panel
-shows the offset carries it. The figure and `results/figure_stats.json` still hold
-the 0.12 until `scripts/make_figures.py` is re-run without that panel.
+**Withdrawn:** an earlier version of this line and figure added "and only +0.12
+with its own residual spread", with a second panel. That was not a measurement:
+every residual is divided by its assay's own sd, so the spread is 1 for all 48
+assays by construction and the correlation was with floating-point rounding. The
+figure is now one panel and `results/figure_stats.json` no longer holds the value.
 
 So "beyond 2 sd" is mostly a restatement of the offset. A tolerance built on it
 would flag the assays where the model is shifted, not the pairs where it is wrong.

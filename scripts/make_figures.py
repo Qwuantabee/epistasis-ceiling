@@ -25,7 +25,7 @@ def _footer(fig, text: str) -> None:
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     probe = fig.text(0, 0, "", fontsize=7)
-    limit = 0.975 * fig.get_figwidth() * fig.dpi
+    limit = 0.95 * fig.get_figwidth() * fig.dpi   # text starts at x=0.012
     lines: list[str] = []
     for para in text.split("\n"):
         line = ""
@@ -143,13 +143,16 @@ def fig_ceiling() -> bool:
 
 
 def fig_bias_not_spread() -> None:
-    """Why "beyond 2 sd" is a statement about the offset, not the spread.
+    """Why "beyond 2 sd" is a statement about the offset.
 
-    Two panels, same y axis, same assays: the share of pairs past 2 sd against the
-    assay's MEAN BIAS (left) and against its residual SPREAD (right). If the tail
-    were measuring unpredictability, the right panel would carry the relationship.
-    It is the left one, and by a wide margin, which is the section's whole argument
-    reduced to one image. Every point is a row of the committed assay_summary.csv.
+    One panel: the share of pairs past 2 sd against the assay's MEAN BIAS. Every
+    point is a row of the committed assay_summary.csv.
+
+    An earlier version had a second panel against the assay's residual sd, titled
+    "r = +0.12". That x variable is 1 for every assay by construction (each
+    residual is divided by its own assay's sd), so the panel was a vertical line
+    and the correlation was with floating-point rounding. It is withdrawn, and
+    figure_stats.json no longer carries it.
     """
     s = pd.read_csv(RES / "assay_summary.csv")
     big = s[s.n_pairs >= 500].copy()
@@ -158,55 +161,46 @@ def fig_bias_not_spread() -> None:
         return
     y = big.frac_outside_2sd.to_numpy(float)
     xb = big.bias_mean_sd.abs().to_numpy(float)
-    xs = big.residual_sd.to_numpy(float)
     rb = float(np.corrcoef(xb, y)[0, 1])
-    rs = float(np.corrcoef(xs, y)[0, 1])
 
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10.6, 4.4), sharey=True)
-    for a, x, r, ttl, xlab, col in (
-            (ax, xb, rb, "The tail tracks the offset",
-             "|mean bias| of the additive prediction (assay sd)", "#d62728"),
-            (ax2, xs, rs, "...not the spread",
-             "residual sd (assay sd)", "#4c72b0")):
-        a.scatter(x, y, s=26, color=col, alpha=0.85, edgecolor="black",
-                  linewidth=0.35)
-        a.set_xlabel(xlab, fontsize=8.5)
-        a.set_title(f"{ttl}\nr = {r:+.2f} over {len(x)} assays", fontsize=9.5)
-        a.grid(alpha=0.25)
-        a.tick_params(labelsize=8)
-    ax.set_ylabel("share of pairs beyond ±2 sd", fontsize=8.5)
+    fig, ax = plt.subplots(figsize=(6.4, 4.8))
+    ax.scatter(xb, y, s=30, color="#d62728", alpha=0.85, edgecolor="black",
+               linewidth=0.35)
+    ax.set_xlabel("|mean bias| of the additive prediction (assay sd)",
+                  fontsize=10)
+    ax.set_ylabel("share of pairs beyond ±2 sd", fontsize=10)
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    ax.set_title(f"The tail tracks the offset\nr = {rb:+.2f} over {len(xb)} "
+                 f"assays (median centring)", fontsize=11)
+    ax.grid(alpha=0.25)
+    ax.tick_params(labelsize=9)
 
     _footer(fig, "Each point is one assay with at least 500 pairs, from the "
-                 "committed assay_summary.csv. Left: assays whose additive "
-                 "prediction is further off zero have proportionally more pairs "
-                 "past ±2 sd, because a fixed threshold counts the offset. "
-                 "Right: the assay's own residual spread barely moves that share. "
-                 "So '12.6% of pairs are beyond 2 sd' is a statement about how "
-                 "far the additive model sits from zero in that assay, not about "
-                 "how unpredictable those pairs are — which is why the per-assay "
-                 "table, not the pooled number, is the result.")
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+                 "committed assay_summary.csv, under the median-of-all-variants "
+                 "centring. Assays whose additive prediction sits further from "
+                 "zero have more pairs past ±2 sd, because a fixed threshold "
+                 "counts the offset. So '12.6% of pairs are beyond 2 sd' is "
+                 "mostly a statement about the offset, not about how "
+                 "unpredictable those pairs are.")
+    fig.tight_layout(rect=(0, 0.13, 1, 1))
     FIGS.mkdir(exist_ok=True)
     fig.savefig(FIGS / "bias_not_spread.png", dpi=160)
     plt.close(fig)
 
-    # The correlations are QUOTED IN THE README, so they are written to an
-    # artefact rather than living only in this function's stdout: a number a
-    # reader can see must be a number scripts/audit_claims.py can check.
+    # The correlation is QUOTED IN THE README, so it is written to an artefact
+    # rather than living only in this function's stdout: a number a reader can
+    # see must be a number scripts/audit_claims.py can check.
     stats = RES / "figure_stats.json"
     prev = json.loads(stats.read_text()) if stats.exists() else {}
     prev["bias_vs_tail_fraction"] = {
         "n_assays": int(len(big)),
         "pearson_abs_bias": rb,
-        "pearson_residual_sd": rs,
-        "reading": "share beyond 2 sd tracks |mean bias|, not residual spread",
+        "reading": "share beyond 2 sd tracks |mean bias| under the median centring",
         "provenance": "scripts/make_figures.py fig_bias_not_spread()",
         "source": "results/assay_summary.csv rows with >=500 pairs",
     }
     stats.write_text(json.dumps(prev, indent=2) + "\n")
-    print(f"  wrote figures/bias_not_spread.png (r_bias={rb:+.3f}, "
-          f"r_spread={rs:+.3f})")
+    print(f"  wrote figures/bias_not_spread.png (r_bias={rb:+.3f})")
 
 
 def main() -> int:

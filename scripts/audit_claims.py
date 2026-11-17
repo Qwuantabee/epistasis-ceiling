@@ -513,8 +513,9 @@ def build_claims(res: Path = RES) -> tuple:
         b = need(f, "bias_vs_tail_fraction", src=src)
         add("tail vs |bias| r", _signed(need(b, "pearson_abs_bias", src=src), "{:+.2f}"),
             src + " pearson_abs_bias", r"the share past 2 sd correlates ")
-        add("tail vs spread r", _signed(need(b, "pearson_residual_sd", src=src), "{:+.2f}"),
-            src + " pearson_residual_sd", r"sits from zero, and only ")
+        # The "tail vs spread r" claim (pearson_residual_sd) is withdrawn: its x
+        # variable is 1 for every assay by construction. The figure and the
+        # artefact no longer carry it, so there is nothing left to check.
     block("figure_stats.json", figstats)
 
     # --- alt_baseline.json: the table, cell by cell ---------------------------------------
