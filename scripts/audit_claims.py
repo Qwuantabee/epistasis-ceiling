@@ -287,6 +287,8 @@ def build_claims(res: Path = RES) -> tuple:
         add("pooled >2sd fraction, centred", [f"{pooled_c:.1%}"],
             src + " n_outside_2sd_centred / n_pairs",
             cell(r"pooled share beyond 2 sd, centred", 1))
+        add("largest assay, pairs", [f"{int(s.n_pairs.max()):,}"], src + " n_pairs max",
+            r"SPG1_STRSG_Olson_2014, holds ")
     block("assay_summary.csv", summary)
 
     # --- invariant_pooled.json -------------------------------------------------------
@@ -386,6 +388,31 @@ def build_claims(res: Path = RES) -> tuple:
             _signed(need(h3, "rho_centred_median", src=src), "{:+.3f}"),
             src + " H3 centred rho",
             cell(r"observed rho\(\\\|residual\\\|, \\\|prediction\\\|\), both centred", 1))
+        # Numbers the page quoted with no claim behind them until a mutation
+        # sweep of every numeric token showed the audit never looked at them.
+        h3x = need(dj, "H3_magnitude_prior_centred", src=src)
+        add("magnitude prior observed minus null",
+            _signed(need(h3x, "observed_centred_minus_null", src=src), "{:.3f}"),
+            src + " H3 observed_centred_minus_null", cell(r"observed minus null", 1))
+        bias_bins = need(h3x, "rho_by_bias_bin", src=src)
+        add("raw rho, assays offset 0.75-1.5 sd",
+            _signed(need(bias_bins, "(0.75, 1.5]", "rho_repo_median", src=src), "{:.3f}"),
+            src + " H3 rho_by_bias_bin (0.75, 1.5]", r"zero was placed — it is\s+")
+        add("raw rho, assays offset under 0.25 sd",
+            _signed(need(bias_bins, "(-1.0, 0.25]", "rho_repo_median", src=src), "{:+.3f}"),
+            src + " H3 rho_by_bias_bin (-1.0, 0.25]", r"1\.5 sd and ")
+        h2x = need(dj, "H2_position", src=src)
+        add("position contrast, assays with 2 groups",
+            [str(need(h2x, "assays_with_only_2_positions", src=src))],
+            src + " H2 assays_with_only_2_positions", r"groups in this contrast \(")
+        cov = need(h2x, "hot_decile_position_pair_coverage_range", src=src)
+        add("hot-decile coverage, lowest assay", [f"{cov[0]:.0%}"],
+            src + " H2 hot decile coverage range[0]", r"of pairs \(range\s+")
+        add("hot-decile coverage, highest assay", [f"{cov[1]:.0%}"],
+            src + " H2 hot decile coverage range[1]", r"of pairs \(range\s+\d+%–")
+        add("alanine Bonferroni p",
+            [f"{need(dj, 'H1_residue', 'top', 'A', 'p_bonferroni', src=src):.3f}"],
+            src + " H1 top.A.p_bonferroni", r"Bonferroni p = ")
     block("depth.json", depth)
 
     # --- esm_context.json (the 4.4% probe) -----------------------------------------------
@@ -408,6 +435,15 @@ def build_claims(res: Path = RES) -> tuple:
             src + " selection.pairs_used", r"The probe above used ")
         add("esm fraction", [f"{100 * need(sel, 'fraction_of_available', src=src):.1f}%"],
             src + " selection.fraction_of_available", r"The probe above used 36,000 pairs \(")
+        add("esm noise floor sd",
+            [f"{need(e, 'controls', 'noise', 'spearman_sd', src=src):.3f}"],
+            src + " controls.noise.spearman_sd",
+            r"pure-noise control of \+\d\.\d+ ± ")
+        add("esm plus prior rho",
+            _signed(need(e, "controls", "esm_plus_prior", "spearman_mean", src=src),
+                    "{:.3f}"),
+            src + " controls.esm_plus_prior.spearman_mean",
+            r"the free prior\*\*: ρ = ")
     block("esm_context.json", esm_context)
 
     # --- heldout.json ------------------------------------------------------------------
@@ -576,6 +612,19 @@ def build_claims(res: Path = RES) -> tuple:
             _signed(need(e, "headline", "incremental_rho_of_esm_over_prior", src=src),
                     "{:+.3f}"), src + " headline incremental rho",
             r"gain of ESM over the free prior is\s+\*\*")
+        inc = need(e, "primary", "heads", "c", "incremental_rho_over_prior", src=src)
+        add("esm_scale incremental over prior, SE",
+            [f"{need(inc, 'esm', 'se', src=src):.3f}"],
+            src + " heads.c.incremental_rho_over_prior.esm.se",
+            r"free prior is\s+\*\*\+?\d\.\d+ ± ")
+        add("esm_scale shuffled incremental",
+            _signed(need(inc, "shuffled", "mean", src=src), "{:+.3f}"),
+            src + " heads.c.incremental_rho_over_prior.shuffled.mean",
+            r"within an assay gives\s+\*\*")
+        add("esm_scale shuffled incremental, SE",
+            [f"{need(inc, 'shuffled', 'se', src=src):.3f}"],
+            src + " heads.c.incremental_rho_over_prior.shuffled.se",
+            r"within an assay gives\s+\*\*\+?\d\.\d+ ± ")
     block("esm_scale.json", esm_scale)
 
     # --- esm_tcrit.json -------------------------------------------------------------
@@ -708,6 +757,47 @@ def build_claims(res: Path = RES) -> tuple:
             [f"{need(r3, 'whole_position_pair', 'median_r2', src=src):.3f}"],
             src + " pair_rank3.>=10.whole_position_pair.median_r2",
             r"scoring \*\*\d+\.\d+\*\* and \*\*")
+        r3all = need(h, "summary", "pair_rank3", "all", src=src)
+        add("holdout rank3 r2, random split, all",
+            [f"{need(r3all, 'random_pair', 'median_r2', src=src):.3f}"],
+            src + " pair_rank3.all.random_pair.median_r2", r"falls just as far, ")
+        add("holdout rank3 r2, whole-pair split, all",
+            _signed(need(r3all, "whole_position_pair", "median_r2", src=src), "{:.3f}"),
+            src + " pair_rank3.all.whole_position_pair.median_r2",
+            r"falls just as far, \d\.\d+ to ")
+        # one sentence covers both models, so both must carry the same count
+        for mdl in ("position", "pair_rank3"):
+            add(f"holdout {mdl} above null, >=10",
+                [str(need(h, "summary", mdl, ">=10", "whole_position_pair",
+                          "assays_above_null", src=src))],
+                f"{src} {mdl}.>=10.whole_position_pair.assays_above_null",
+                r"Both beat their null in \*\*")
+        pdx = need(h, "summary", "position", ">=10", "paired_whole_minus_random", src=src)
+        pci = need(pdx, "ci95_bootstrap", src=src)
+        add("holdout paired loss >=10", [f"{abs(need(pdx, 'median', src=src)):.3f}"],
+            src + " position.>=10.paired_whole_minus_random.median",
+            r"position R²\s+drops by ")
+        add("holdout paired loss >=10, CI near bound", [f"{abs(pci[1]):.3f}"],
+            src + " position.>=10.paired_whole_minus_random.ci95[1]",
+            r"drops by \d\.\d+ \[")
+        add("holdout paired loss >=10, CI far bound", [f"{abs(pci[0]):.3f}"],
+            src + " position.>=10.paired_whole_minus_random.ci95[0]",
+            r"drops by \d\.\d+ \[\d\.\d+, ")
+        add("holdout paired loss >=10, assays lower",
+            [str(need(pdx, "assays_whole_lower", src=src))],
+            src + " position.>=10.paired_whole_minus_random.assays_whole_lower",
+            r"\], lower in ")
+        seen = [p["seen"]["both"] for p in need(h, "per_assay", src=src)
+                if p["n_cells"] >= 10]
+        add("holdout >=10, assays with every test pair seen",
+            [str(sum(v == 1.0 for v in seen))],
+            src + " per_assay seen.both == 1, n_cells >= 10", r"every test pair in ")
+        add("holdout >=10, assays with >=99.9% of test pairs seen",
+            [str(sum(v >= 0.999 for v in seen))],
+            src + " per_assay seen.both >= 0.999, n_cells >= 10", r"test pairs in ")
+        add("holdout >=10, lowest share of test pairs seen", [f"{min(seen):.0%}"],
+            src + " per_assay min seen.both, n_cells >= 10",
+            r"test pairs in \d+, and ")
     block("position_holdout.json", position_holdout)
 
     # --- monotone_fit.json: is "position" a calibration curve? ---------------------
@@ -751,6 +841,21 @@ def build_claims(res: Path = RES) -> tuple:
             [f"{round(100 * need(surv, 'median_D42_over_median_position_r2', src=src)):.0f}%"],
             src + " median_D42_over_median_position_r2",
             r"assays\. That is \*\*")
+        ci32 = need(d32, "ci95_bootstrap", src=src)
+        add("position minus isotonic, CI low", _signed(ci32[0], "{:.3f}"),
+            src + " paired 3-2 ci95[0]", r"position sits\s+\*\*-?\d\.\d+\*\* \[")
+        add("position minus isotonic, CI high", _signed(ci32[1], "{:.3f}"),
+            src + " paired 3-2 ci95[1]",
+            r"position sits\s+\*\*-?\d\.\d+\*\* \[-?\d\.\d+, ")
+        ci42 = need(d42, "ci95_bootstrap", src=src)
+        add("position adds over isotonic, CI low", _signed(ci42[0], "{:.3f}"),
+            src + " paired 4-2 ci95[0]",
+            r"curve is present is \*\*\d\.\d+\*\* \[")
+        add("position adds over isotonic, CI high", _signed(ci42[1], "{:.3f}"),
+            src + " paired 4-2 ci95[1]",
+            r"curve is present is \*\*\d\.\d+\*\* \[\d\.\d+, ")
+        add("monotone rule eps", [f"{need(m, 'rule', 'eps', src=src):.2f}"],
+            src + " rule.eps", r"lower bound clears ", r"judged by the\s+same ")
     block("monotone_fit.json", monotone_fit)
 
     for name in REQUIRED_ARTEFACTS:
