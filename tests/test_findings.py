@@ -141,8 +141,8 @@ def test_heldout_verdict_width_branch_can_fire():
     # claim, so agreement cannot be established.
     assert heldout.verdict(corpus=0.9, lo=-0.8, hi=1.2, n=20,
                            effect=0.2) == "INCONCLUSIVE"
-    # same interval, but the effect is large relative to its width and does not
-    # span zero: the corpus median sits inside, same sign -> SUPPORTED.
+    # an interval that is narrow relative to its effect and does not span zero,
+    # with the corpus median OUTSIDE it (0.5 < 1.0) -> NOT_SUPPORTED.
     assert heldout.verdict(corpus=0.5, lo=1.0, hi=3.0, n=20,
                            effect=2.0) == "NOT_SUPPORTED"
     # the dead-code signature: passing the width as the effect must NOT silently
@@ -153,3 +153,89 @@ def test_heldout_verdict_width_branch_can_fire():
     # small groups stay inconclusive regardless
     assert heldout.verdict(corpus=0.9, lo=0.8, hi=1.0, n=3,
                            effect=9.0) == "INCONCLUSIVE"
+
+
+def _heldout():
+    scripts = str(Path(__file__).resolve().parent.parent / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import heldout
+    return heldout
+
+
+def test_heldout_verdict_every_reachable_branch_is_pinned():
+    """One input per return of heldout.verdict that the test above leaves open.
+
+    The width test pins the small-n, too-wide and NOT_SUPPORTED returns. It never
+    produces SUPPORTED, and its zero-spanning inputs are all caught by the width
+    rule first, so the 'spans zero and contains the corpus' rule had no test of
+    its own. Each case below is built so that only the named rule can decide it.
+    """
+    v = _heldout().verdict
+    # SUPPORTED: contains the corpus value, excludes zero, narrower than 2|effect|.
+    assert v(corpus=0.5, lo=0.1, hi=1.0, n=20, effect=0.9) == "SUPPORTED"
+    # The same interval moved to span zero. Width 1.1 is still under 2|effect| =
+    # 1.8, so the width rule does not fire and the zero-spanning rule must.
+    assert v(corpus=0.5, lo=-0.1, hi=1.0, n=20, effect=0.9) == "INCONCLUSIVE"
+    # An effect of exactly zero skips the width rule (it needs |effect| > 0), so
+    # this too is decided by the zero-spanning rule.
+    assert v(corpus=0.0, lo=-0.1, hi=0.1, n=20, effect=0.0) == "INCONCLUSIVE"
+    # Spans zero but excludes the corpus value, and is not too wide: the corpus
+    # disagrees with the group, which is NOT_SUPPORTED rather than undecided.
+    assert v(corpus=2.0, lo=-0.1, hi=1.0, n=20, effect=0.9) == "NOT_SUPPORTED"
+    # n = 8 is the first group size the rule will judge at all.
+    assert v(corpus=0.5, lo=0.1, hi=1.0, n=7, effect=0.9) == "INCONCLUSIVE"
+    assert v(corpus=0.5, lo=0.1, hi=1.0, n=8, effect=0.9) == "SUPPORTED"
+
+
+def test_heldout_verdict_sign_fallback_cannot_fire():
+    """Documents a dead sub-branch rather than hiding it.
+
+    The SUPPORTED return carries an `else "INCONCLUSIVE"` for an interval whose
+    midpoint has the opposite sign to the corpus value. By the time that line is
+    reached the interval contains the corpus value and does not contain zero, so
+    both of its ends share the corpus sign and the fallback is unreachable. This
+    grid pins that: every input that reaches the line returns SUPPORTED. If the
+    rules above it are ever reordered, this test says which outcome changed.
+    """
+    v = _heldout().verdict
+    grid = [-3.0, -2.0, -1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0, 2.0, 3.0]
+    seen = set()
+    for lo in grid:
+        for hi in grid:
+            for corpus in grid:
+                for effect in grid:
+                    if not lo <= effect <= hi:
+                        continue        # a bootstrap interval holds its median
+                    too_wide = abs(effect) > 0 and (hi - lo) > 2 * abs(effect)
+                    spans_zero = lo <= 0.0 <= hi
+                    if too_wide or spans_zero or not lo <= corpus <= hi:
+                        continue
+                    seen.add(v(corpus=corpus, lo=lo, hi=hi, n=20, effect=effect))
+    assert seen == {"SUPPORTED"}, seen
+
+
+def test_heldout_artefact_verdicts_follow_from_their_own_intervals():
+    """Every per-group verdict in results/heldout.json, re-derived from the
+    interval, group size and median stored beside it. The rule was changed after
+    the first run (the width branch), so the stored labels are checked against the
+    rule as it now stands, not assumed."""
+    import json
+    heldout = _heldout()
+    h = json.loads((Path(__file__).resolve().parent.parent / "results"
+                    / "heldout.json").read_text())
+    corpus = h["corpus_median"]
+    groups = (h["H1_lab_family"]["Tsuboyama"], h["H1_lab_family"]["other_labs"],
+              h["H2_excluded_small_assays"])
+    checked, outcomes = 0, set()
+    for g in groups:
+        for key in ("bias_sd", "frac_outside_2sd", "auc"):
+            lo, hi = g[key]["ci95"]
+            got = heldout.verdict(corpus[key], lo, hi, g["n_assays"],
+                                  g[key]["median"])
+            assert got == g["verdict_vs_corpus"][key], (g["group"], key, got)
+            checked += 1
+            outcomes.add(got)
+    assert checked == 9
+    # the committed data exercise all three labels, the width rule included
+    assert outcomes == {"SUPPORTED", "NOT_SUPPORTED", "INCONCLUSIVE"}
