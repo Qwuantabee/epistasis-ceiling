@@ -3,7 +3,7 @@
  "provenance": {
   "command": "python scripts/alt_baseline.py --n-perm 10 --workers 8",
   "cwd": "repository root",
-  "interpreter": "/home/ubuntu/.openclaw/workspace/venv/bin/python",
+  "interpreter": "python",
   "python": "3.12.3",
   "versions": {
    "numpy": "2.4.2",

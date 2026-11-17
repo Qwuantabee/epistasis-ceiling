@@ -279,5 +279,5 @@
     "verdict": "INCONCLUSIVE",
     "reading": "A ranking number that survives dropping any one lab is a corpus property; one that does not is that lab's."
   },
-  "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python scripts/heldout.py"
+  "provenance": "python scripts/heldout.py"
 }

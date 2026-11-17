@@ -16,7 +16,7 @@
  "provenance": {
   "command": "python scripts/position_holdout.py --n-perm 10 --workers 9",
   "cwd": "repository root",
-  "interpreter": "/home/ubuntu/.openclaw/workspace/venv/bin/python",
+  "interpreter": "python",
   "python": "3.12.3",
   "versions": {
    "numpy": "2.4.2",

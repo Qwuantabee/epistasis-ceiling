@@ -1,7 +1,7 @@
 {
   "reviewer": "independent adversarial review (subagent), 2026-11-16",
-  "repo": "/home/ubuntu/biotech-portfolio/epistasis-ceiling @ 27348ef",
-  "method": "Recomputed every headline from results/pairs/*.csv (818,362 rows, all 65 assays present) with /home/ubuntu/.openclaw/workspace/venv/bin/python. No prose was taken on trust; scripts under /tmp/rt*.py.",
+  "repo": "epistasis-ceiling @ 27348ef",
+  "method": "Recomputed every headline from results/pairs/*.csv (818,362 rows, all 65 assays present) with python. No prose was taken on trust; scripts under /tmp/rt*.py.",
   "verdict": "MEASUREMENT SOUND, INTERPRETATION BROKEN. Claims 1 and 2's Spearman survive exact recomputation. The two headline claims that are supposed to 'change what you'd do' (claim 3, the mild-singles prior, and claim 5, the residue negative) are both artefacts of the analysis, and claim 2's 40.8% and 0.693 are category errors. Claim 4's 0.140 survives but is not the prior the README sells. The ESM negative result is uninterpretable as run (a broken estimator on 4.3% of the data), so the README currently makes a strong negative claim it has not earned. The README as written must not ship.",
   "findings": [
     {

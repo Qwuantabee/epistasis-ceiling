@@ -2700,7 +2700,7 @@
     "regenerate": "the same command re-embeds any window missing from the cache; deleting the directory rebuilds it from the HF cache of facebook/esm2_t33_650M_UR50D (HF_HUB_OFFLINE=1)"
   },
   "provenance": {
-    "command": "/home/ubuntu/.openclaw/workspace/venv/bin/python scripts/esm_scale.py --max-per-assay 50000 --sensitivity-caps 0",
+    "command": "python scripts/esm_scale.py --max-per-assay 50000 --sensitivity-caps 0",
     "git_head_at_run": "1026742aef5e82246f3972de33dc3b98da063c13",
     "git_dirty_at_run": false,
     "backend": "torch:cuda",

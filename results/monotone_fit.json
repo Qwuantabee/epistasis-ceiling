@@ -28,7 +28,7 @@
  "provenance": {
   "command": "python scripts/monotone_fit.py --n-perm 5 --workers 6",
   "cwd": "repository root",
-  "interpreter": "/home/ubuntu/.openclaw/workspace/venv/bin/python",
+  "interpreter": "python",
   "python": "3.12.3",
   "versions": {
    "numpy": "2.4.2",

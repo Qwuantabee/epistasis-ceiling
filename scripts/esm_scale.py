@@ -803,7 +803,7 @@ def main(argv=None) -> int:
     if args.batch > 512:
         raise SystemExit("--batch above 512 is not allowed on the shared GPU")
     out_p = Path(args.out)
-    cmd = " ".join(shlex.quote(x) for x in [sys.executable, *sys.argv])
+    cmd = " ".join(shlex.quote(x) for x in [Path(sys.executable).name, *sys.argv])  # no machine path
 
     if args.preregister:
         doc = {"status": "preregistered",

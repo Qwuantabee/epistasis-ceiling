@@ -22,5 +22,5 @@
     "prior_usefulness": "never SUPPORTED while invariant_pooled.json records the magnitude prior as WITHDRAWN: the construction-preserving null exceeds the observed statistic, so a positive within-assay rho is not evidence of usable signal"
   },
   "reading": "Within an assay the prior is positive in 47/48 assays at a median rho of +0.313, and dividing it by each assay's own sd changes that by at most 0.0e+00 - the rank statistic is invariant to a positive per-assay constant. Pooled across assays the same quantities give -0.025 in raw units against a positive value once each assay is on its own scale. So the *invariance* is arithmetic and holds. That is NOT the same as the prior being informative: the permutation null in invariant_pooled.json exceeds the observed statistic, so the correlation is dominated by the mechanical coupling between |predicted| and |residual| rather than by epistasis. The corpus-scale ESM run's statement that the prior 'ranks backwards' is a POOLING artefact of a cross-assay evaluation, and correcting it does not promote the prior to a usable predictor.",
-  "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python scripts/prior_units.py"
+  "provenance": "python scripts/prior_units.py"
 }
