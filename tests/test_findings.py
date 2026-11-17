@@ -189,14 +189,15 @@ def test_heldout_verdict_every_reachable_branch_is_pinned():
 
 
 def test_heldout_verdict_sign_fallback_cannot_fire():
-    """Documents a dead sub-branch rather than hiding it.
+    """Documents why a sub-branch was removed rather than hiding it.
 
-    The SUPPORTED return carries an `else "INCONCLUSIVE"` for an interval whose
-    midpoint has the opposite sign to the corpus value. By the time that line is
-    reached the interval contains the corpus value and does not contain zero, so
-    both of its ends share the corpus sign and the fallback is unreachable. This
-    grid pins that: every input that reaches the line returns SUPPORTED. If the
-    rules above it are ever reordered, this test says which outcome changed.
+    The SUPPORTED return used to carry an `else "INCONCLUSIVE"` for an interval
+    whose midpoint had the opposite sign to the corpus value. By the time that line
+    is reached the interval contains the corpus value and does not contain zero, so
+    both of its ends share the corpus sign and the fallback was unreachable (it has
+    since been deleted). This grid pins that: every input that reaches the line
+    returns SUPPORTED. If the rules above it are ever reordered, this test says
+    which outcome changed.
     """
     v = _heldout().verdict
     grid = [-3.0, -2.0, -1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0, 2.0, 3.0]
@@ -213,6 +214,68 @@ def test_heldout_verdict_sign_fallback_cannot_fire():
                         continue
                     seen.add(v(corpus=corpus, lo=lo, hi=hi, n=20, effect=effect))
     assert seen == {"SUPPORTED"}, seen
+
+
+def test_heldout_verdict_missing_upper_bound_is_inconclusive():
+    """A finite lower bound with no upper bound is no interval at all.
+
+    The guard used to check `lo` only, so hi = nan fell through every rule (each
+    comparison with nan is False) and came out NOT_SUPPORTED. Both bounds, and each
+    one alone, missing must now return INCONCLUSIVE."""
+    v = _heldout().verdict
+    nan = float("nan")
+    assert v(corpus=0.5, lo=0.1, hi=nan, n=20, effect=0.9) == "INCONCLUSIVE"
+    assert v(corpus=0.5, lo=nan, hi=1.0, n=20, effect=0.9) == "INCONCLUSIVE"
+    assert v(corpus=0.5, lo=nan, hi=nan, n=20, effect=0.9) == "INCONCLUSIVE"
+    assert v(corpus=0.5, lo=0.1, hi=1.0, n=20, effect=nan) == "INCONCLUSIVE"
+    assert v(corpus=0.5, lo=0.1, hi=float("inf"), n=20,
+             effect=0.9) == "INCONCLUSIVE"
+
+
+def test_heldout_verdict_branch_map_is_complete():
+    """One input per return statement of heldout.verdict, in source order, so a
+    reordering or a new return shows up as a changed outcome here."""
+    v = _heldout().verdict
+    cases = [
+        # 1. guard: too few assays
+        (dict(corpus=0.5, lo=0.1, hi=1.0, n=7, effect=0.9), "INCONCLUSIVE"),
+        # 2. width rule: interval wider than twice the effect
+        (dict(corpus=0.5, lo=0.1, hi=3.0, n=20, effect=0.9), "INCONCLUSIVE"),
+        # 3. spans zero and contains the corpus value
+        (dict(corpus=0.5, lo=-0.1, hi=1.0, n=20, effect=0.9), "INCONCLUSIVE"),
+        # 4. contains the corpus value, excludes zero
+        (dict(corpus=0.5, lo=0.1, hi=1.0, n=20, effect=0.9), "SUPPORTED"),
+        # 5. excludes the corpus value
+        (dict(corpus=2.0, lo=0.1, hi=1.0, n=20, effect=0.9), "NOT_SUPPORTED"),
+    ]
+    for kw, want in cases:
+        assert v(**kw) == want, (kw, v(**kw), want)
+
+
+def _prior_units():
+    scripts = str(Path(__file__).resolve().parent.parent / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import prior_units
+    return prior_units
+
+
+def test_prior_usefulness_verdict_depends_on_the_null_status():
+    """The usefulness verdict used to be `"INCONCLUSIVE" if WITHDRAWN else
+    "INCONCLUSIVE"`: both arms identical, so the null never mattered. Each status
+    now has its own outcome, and the committed artefact's verdict re-derives from
+    the null status stored beside it."""
+    import json
+    pu = _prior_units()
+    assert pu.prior_usefulness_verdict("WITHDRAWN") == "INCONCLUSIVE"
+    assert pu.prior_usefulness_verdict(None) == "NOT_EVALUATED"
+    assert pu.prior_usefulness_verdict("SUPPORTED") == "NOT_EVALUATED"
+    art = json.loads((Path(__file__).resolve().parent.parent / "results"
+                      / "prior_units.json").read_text())
+    assert art["prior_null_status_from_invariant_pooled"] == "WITHDRAWN"
+    assert (pu.prior_usefulness_verdict(
+        art["prior_null_status_from_invariant_pooled"])
+        == art["verdict_prior_usefulness"] == "INCONCLUSIVE")
 
 
 def test_heldout_artefact_verdicts_follow_from_their_own_intervals():

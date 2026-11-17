@@ -36,6 +36,21 @@ if str(ROOT / "src") not in sys.path:
 from epsceil.pairs import add_centred_columns  # noqa: E402
 
 
+def prior_usefulness_verdict(null_status: str | None) -> str:
+    """Usefulness verdict for the magnitude prior, from its own null's status.
+
+    The rule written into the artefact covers one case: while invariant_pooled.json
+    records the prior as WITHDRAWN (its construction-preserving null exceeds the
+    observed statistic) the prior is INCONCLUSIVE at best. The previous expression
+    returned "INCONCLUSIVE" from both arms of its conditional, so the null status
+    never mattered. No rule was ever written for any other status, so this says so
+    (NOT_EVALUATED) instead of asserting a verdict.
+    """
+    if null_status == "WITHDRAWN":
+        return "INCONCLUSIVE"
+    return "NOT_EVALUATED"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-pairs", type=int, default=500)
@@ -95,6 +110,7 @@ def main() -> int:
     #                 permutation null (shuffle observed within assay, rebuild the
     #                 residual) EXCEEDS the observed value, so the prior carries no
     #                 usable signal about epistasis. INCONCLUSIVE at best.
+    # (prior_usefulness_verdict below makes the usefulness rule explicit.)
     invariance_holds = (max_dev <= 1e-9
                         and np.isclose(within_raw, within_sd, atol=1e-12))
     # read the prior's own null from the artefact the repo already committed
@@ -122,8 +138,7 @@ def main() -> int:
         "claim_under_test": "per-assay sd scaling is not what makes the prior look "
                             "bad; only pooling pairs across assays is",
         "verdict_invariance": "SUPPORTED" if invariance_holds else "NOT_SUPPORTED",
-        "verdict_prior_usefulness": ("INCONCLUSIVE" if null_verdict == "WITHDRAWN"
-                                     else "INCONCLUSIVE"),
+        "verdict_prior_usefulness": prior_usefulness_verdict(null_verdict),
         "prior_null_status_from_invariant_pooled": null_verdict,
         "verdict_rule": {
             "invariance": "SUPPORTED when the within-assay medians agree and the "

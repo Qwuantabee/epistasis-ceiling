@@ -123,7 +123,10 @@ def verdict(corpus: float, lo: float, hi: float, n: int, effect: float) -> str:
     it meant the rule stated in VERDICT_RULE was not the rule actually applied.
     """
     width = hi - lo
-    if n < 8 or not np.isfinite(lo) or not np.isfinite(effect):
+    # Either bound missing means there is no interval to judge. Checking `lo`
+    # alone let a finite lo with hi = nan fall through to NOT_SUPPORTED.
+    if (n < 8 or not np.isfinite(lo) or not np.isfinite(hi)
+            or not np.isfinite(effect)):
         return "INCONCLUSIVE"
     # The interval is wider than the effect it is meant to establish: agreement
     # with the corpus and agreement with zero cannot be told apart.
@@ -133,9 +136,11 @@ def verdict(corpus: float, lo: float, hi: float, n: int, effect: float) -> str:
     # compatible both with no effect and with the corpus value.
     if lo <= 0.0 <= hi and lo <= corpus <= hi:
         return "INCONCLUSIVE"
+    # Here the interval contains the corpus value and excludes zero, so both ends
+    # share the corpus sign: SUPPORTED. (An earlier `else "INCONCLUSIVE"` on a
+    # midpoint-sign check could not be reached; tests/test_findings.py pins that.)
     if lo <= corpus <= hi:
-        return "SUPPORTED" if (np.sign(np.median([lo, hi])) == np.sign(corpus)
-                               or corpus == 0) else "INCONCLUSIVE"
+        return "SUPPORTED"
     return "NOT_SUPPORTED"
 
 
