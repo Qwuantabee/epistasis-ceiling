@@ -151,8 +151,7 @@ def main() -> int:
                     "backwards' is a POOLING artefact of a cross-assay evaluation, "
                     "and correcting it does not promote the prior to a usable "
                     "predictor."),
-        "provenance": "/home/ubuntu/.openclaw/workspace/venv/bin/python "
-                      "scripts/prior_units.py",
+        "provenance": "python scripts/prior_units.py",
     }
     Path(args.out).write_text(json.dumps(res, indent=2) + "\n")
     print(f"{len(t)} assays, {int(t.n.sum()):,} pairs")

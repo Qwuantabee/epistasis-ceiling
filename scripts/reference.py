@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -38,8 +39,13 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "results"
-RAW = Path("/home/ubuntu/biotech-portfolio/_data/proteingym_substitutions")
-IDX = Path("/home/ubuntu/biotech-portfolio/_data/DMS_substitutions.csv")
+# Raw ProteinGym is not part of this repo. Resolution order: --data / --index,
+# then $EPSCEIL_DATA / $EPSCEIL_INDEX, then ../_data/ beside the repository (the
+# same default scripts/heldout.py and scripts/esm_scale.py use).
+RAW = Path(os.environ.get(
+    "EPSCEIL_DATA", ROOT.parent / "_data" / "proteingym_substitutions"))
+IDX = Path(os.environ.get(
+    "EPSCEIL_INDEX", ROOT.parent / "_data" / "DMS_substitutions.csv"))
 
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
@@ -101,7 +107,26 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-pairs", type=int, default=500)
     ap.add_argument("--out", default=str(RES / "reference.json"))
+    ap.add_argument("--data", default=None,
+                    help="ProteinGym directory holding <assay>.csv "
+                         "(default: $EPSCEIL_DATA, then ../_data/proteingym_substitutions)")
+    ap.add_argument("--index", default=None,
+                    help="DMS_substitutions.csv "
+                         "(default: $EPSCEIL_INDEX, then ../_data/DMS_substitutions.csv)")
     args = ap.parse_args()
+
+    global RAW, IDX
+    if args.data:
+        RAW = Path(args.data)
+    if args.index:
+        IDX = Path(args.index)
+    # A missing input is a clear error, never a table of NaN medians.
+    for what, p in (("--data", RAW), ("--index", IDX)):
+        if not p.exists():
+            print(f"reference.py: {p} not found; pass {what} or set "
+                  f"{'EPSCEIL_DATA' if what == '--data' else 'EPSCEIL_INDEX'}",
+                  file=sys.stderr)
+            return 1
 
     idx = load_index()
     rows = []

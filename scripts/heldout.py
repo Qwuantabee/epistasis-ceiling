@@ -298,8 +298,7 @@ def main() -> int:
         "H1_lab_family": h1,
         "H2_excluded_small_assays": h2,
         "H3_leave_one_lab_out": h3,
-        "provenance": ("/home/ubuntu/.openclaw/workspace/venv/bin/python "
-                       "scripts/heldout.py"),
+        "provenance": "python scripts/heldout.py",
     }
     Path(args.out).write_text(json.dumps(res, indent=2) + "\n")
 

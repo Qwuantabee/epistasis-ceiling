@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "epsceil"
 version = "0.1.0"
-description = "How far do single-mutant measurements get you on doubles? The epistasis ceiling of additivity, measured on 1.7M ProteinGym double mutants."
+description = "How far do single-mutant measurements get you on doubles? The epistasis ceiling of additivity, measured on 818,362 ProteinGym double mutants from 65 assays."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
