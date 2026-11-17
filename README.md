@@ -4,29 +4,27 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Qwuantabee/epistasis-ceiling/blob/master/LICENSE)
 [![python](https://img.shields.io/badge/python-3.12-blue.svg)](https://github.com/Qwuantabee/epistasis-ceiling/blob/master/pyproject.toml)
 
+Protein engineers screen singles because they are cheap and doubles explode
+combinatorially: 1,000 singles imply ~500,000 pairs. The bet is that effects add.
+This repo measures how good that bet is on the 65 ProteinGym assays that measure
+both singles and doubles, 825,437 doubles in all, and then asks the only
+useful follow-up: **can you tell in advance which pairs will break?**
+
 **On the 48 ProteinGym assays with at least 500 measured double mutants (813,014
 pairs), adding the two single-mutant effects ranks the double correctly — median
-AUC 0.884.** An earlier version also called the additive prediction biased by a
-median 0.94 assay-sd. That is withdrawn: the offset is set by where each assay's
-zero is put, not by additivity. For the 33 assays scored as a ΔΔG from wild type
-it reads -0.79 sd under the median centring this repo used and +1.15 sd under
-wild type = 0, positive in 33/33. Three candidate priors for *where* additivity
+AUC 0.884.** Three candidate priors for *where* additivity
 breaks were tested — the size of the singles, residue identity, ESM-2 sequence
 context — and **none survives its own null or control**. Which positions are
 involved explains a small, real part, but only after fitting on that protein's
 own measured doubles, so nothing here tells you in advance where additivity breaks.
+A bias claim made by an earlier version is withdrawn; see
+[the offset section](#the-additive-models-offset-is-a-convention-which-changes-what-a-fixed-tolerance-means).
 
 The AUC is for placing a double above or below its assay's median observed score,
 one value per assay; the unit of evidence is the 48 assays, not the pairs (one
 assay, SPG1_STRSG_Olson_2014, holds 535,917 of them).
 
 ![Additivity ceiling](figures/ceiling.png)
-
-Protein engineers screen singles because they are cheap and doubles explode
-combinatorially: 1,000 singles imply ~500,000 pairs. The bet is that effects add.
-This repo measures how good that bet is on the 65 ProteinGym assays that measure
-both singles and doubles, 825,437 doubles in all, and then asks the only
-useful follow-up: **can you tell in advance which pairs will break?**
 
 ## The measurement
 
@@ -118,6 +116,12 @@ so it could not in principle detect the offset that produced the sign.
 gap, and the section says how far each one gets.
 
 ### The additive model's offset is a convention, which changes what "a fixed tolerance" means
+
+An earlier version also called the additive prediction biased by a
+median 0.94 assay-sd. That is withdrawn: the offset is set by where each assay's
+zero is put, not by additivity. For the 33 assays scored as a ΔΔG from wild type
+it reads -0.79 sd under the median centring this repo used and +1.15 sd under
+wild type = 0, positive in 33/33.
 
 The residual mean is not zero, but its size and its sign are set by where each
 assay's zero is put, not by additivity. This repo centres each assay on the median
