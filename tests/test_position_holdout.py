@@ -148,3 +148,117 @@ def test_q1_rule_is_applied_mechanically(ph):
     assert v["verdict"] == "INCONCLUSIVE"          # < 6 assays
     v = ph.verdict_for(-0.1 * one, 0.1 * one, 0.0 * one)
     assert v["verdict"] == "INCONCLUSIVE"          # ratio undefined
+
+
+# ------------------------------------------------------------ Q2 unit tests
+@pytest.fixture(scope="module")
+def mf():
+    return _load("monotone_fit")
+
+
+def _global_assay(kind, n_pos=10, per_pos=6, noise=0.3, seed=0):
+    """Singles cluster by position (position means m_p); a double's additive
+    prediction is A = s_a + s_b. kind="saturation": observed = 2 tanh(A/2) +
+    noise (a global monotone curve, NO position-specific term).
+    kind="position": observed = A + alpha_p + alpha_q + noise with alpha
+    independent of m_p (position-specific, NO nonlinearity)."""
+    rng = np.random.default_rng(seed)
+    m = rng.normal(0, 1.0, n_pos)
+    alpha = rng.normal(0, 0.6, n_pos)
+    s = {p: rng.normal(m[p], 0.5, per_pos) for p in range(n_pos)}
+    rows = []
+    for p in range(n_pos):
+        for q in range(p + 1, n_pos):
+            for i in range(per_pos):
+                for j in range(per_pos):
+                    a = s[p][i] + s[q][j]
+                    if kind == "saturation":
+                        obs = 2.0 * np.tanh(a / 2.0)
+                    else:
+                        obs = a + alpha[p] + alpha[q]
+                    rows.append((p + 10, q + 10, a, obs + rng.normal(0, noise)))
+    t = pd.DataFrame(rows, columns=["pos_a", "pos_b", "predicted", "observed"])
+    t["residual_raw"] = t.observed - t.predicted
+    sd = float(t.residual_raw.std(ddof=1))
+    t["residual"] = t.residual_raw / sd
+    t["residual_scale_sd"] = sd
+    return t
+
+
+def _fit_q2(mf, t, lam=1.0, **kw):
+    r = t.residual.to_numpy()
+    x = t.predicted.to_numpy() / float(t.residual_scale_sd.iloc[0])
+    ia, ib, n_pos = mf.position_codes(t.pos_a.to_numpy(), t.pos_b.to_numpy())
+    preds, diag = mf.crossfit_models(x, r, ia, ib, n_pos, lam,
+                                     mf.inner_splits(len(t), 0), **kw)
+    return {k: r2_resid_var(r, v) for k, v in preds.items()}, preds, diag
+
+
+def test_isotonic_helper_is_sklearn_isotonic_regression(mf):
+    from sklearn.isotonic import IsotonicRegression
+    rng = np.random.default_rng(21)
+    x = np.round(rng.normal(size=3000), 2)          # many ties
+    y = np.tanh(x) + rng.normal(0, 0.5, size=3000)
+    xq = np.concatenate([rng.normal(size=500) * 2, [-9.0, 9.0]])   # beyond range
+    ref = IsotonicRegression(increasing=True, out_of_bounds="clip").fit(x, y)
+    got = mf.IsoOnX(x).fit(y)
+    assert np.allclose(got(xq), ref.predict(xq), atol=1e-10)
+    assert np.allclose(got(x), ref.predict(x), atol=1e-10)
+
+
+def test_position_model_is_the_committed_position_model(mf):
+    """(3) must be crossfit_assay's position prediction, real and null."""
+    t = _global_assay("position", seed=22)
+    _, preds, _ = _fit_q2(mf, t, lam=10.0)
+    ref = crossfit_assay(t, lambdas=(10.0,), seed=0)
+    assert np.array_equal(preds["position"], ref[("position", 10.0)])
+    _, preds, _ = _fit_q2(mf, t, lam=10.0, r_rng=np.random.default_rng(4))
+    ref = crossfit_assay(t, lambdas=(10.0,), seed=0,
+                         permute_rng=np.random.default_rng(4))
+    assert np.array_equal(preds["position"], ref[("position", 10.0)])
+
+
+def test_global_saturation_is_absorbed_by_the_monotone_term(mf):
+    """No position-specific term planted: position alone scores, because single
+    effects cluster by position, but adds ~nothing once isotonic is allowed."""
+    t = _global_assay("saturation", seed=23)
+    r2, _, _ = _fit_q2(mf, t)
+    assert r2["position"] > 0.1                       # the confound is real
+    assert r2["isotonic"] > r2["position"]
+    assert r2["position+isotonic"] - r2["isotonic"] < 0.02
+
+
+def test_position_specific_effects_survive_the_monotone_term(mf):
+    t = _global_assay("position", seed=24)
+    r2, _, _ = _fit_q2(mf, t)
+    assert r2["isotonic"] < 0.1
+    assert r2["position+isotonic"] - r2["isotonic"] > 0.3
+    lab, _, _ = _fit_q2(mf, t, label_rng=np.random.default_rng(5))
+    assert lab["position+isotonic"] - r2["isotonic"] < 0.02   # its null
+    full, _, _ = _fit_q2(mf, t, r_rng=np.random.default_rng(6))
+    for k in ("isotonic", "position", "position+isotonic"):
+        assert full[k] < 0.02, k
+
+
+def test_backfit_first_step_is_the_sequential_fit(mf):
+    t = _global_assay("saturation", seed=25)
+    r = t.residual.to_numpy()
+    x = t.predicted.to_numpy() / float(t.residual_scale_sd.iloc[0])
+    ia, ib, n_pos = mf.position_codes(t.pos_a.to_numpy(), t.pos_b.to_numpy())
+    (g1, mu1, a1), _, it, delta = mf.backfit("isotonic", x, r, ia, ib, n_pos, 1.0)
+    g = mf.IsoOnX(x).fit(x + r)
+    mu, a = mf.fit_position(ia, ib, r - (g(x) - x), n_pos, 1.0)
+    assert np.allclose(g1(x), g(x)) and mu1 == pytest.approx(mu)
+    assert np.allclose(a1, a)
+    assert it >= 1 and delta <= mf.BF_TOL
+
+
+def test_q2_rule_is_applied_mechanically(mf):
+    e = mf.EPS
+    assert mf.decide([e + 0.01, 0.3], 0.8) == "SUPPORTED"
+    assert mf.decide([e + 0.01, 0.3], 0.6) == "INCONCLUSIVE"
+    assert mf.decide([e + 0.01, 0.3], 0.4) == "NOT_SUPPORTED"
+    assert mf.decide([-0.05, e - 0.001], 0.9) == "NOT_SUPPORTED"
+    assert mf.decide([0.0, 0.1], 0.9) == "INCONCLUSIVE"
+    assert mf.decide([e + 0.01, 0.3], None) == "SUPPORTED"
+    assert mf.decide([-0.2, -0.1], None) == "NOT_SUPPORTED"
