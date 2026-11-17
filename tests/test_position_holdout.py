@@ -262,3 +262,121 @@ def test_q2_rule_is_applied_mechanically(mf):
     assert mf.decide([0.0, 0.1], 0.9) == "INCONCLUSIVE"
     assert mf.decide([e + 0.01, 0.3], None) == "SUPPORTED"
     assert mf.decide([-0.2, -0.1], None) == "NOT_SUPPORTED"
+
+
+
+# ------------------------------------------------------------ artefacts
+SUMMARY = ROOT / "results" / "assay_summary.csv"
+
+
+@pytest.fixture(scope="module")
+def ph_art():
+    return json.loads(PH_ART.read_text())
+
+
+@pytest.fixture(scope="module")
+def mf_art():
+    return json.loads(MF_ART.read_text())
+
+
+def _check_provenance(art, script):
+    import hashlib
+    prov = art["provenance"]
+    assert prov["command"].startswith(f"python scripts/{script}.py")
+    assert re.fullmatch(r"[0-9a-f]{40}", prov["git_head"])
+    assert prov["code_uncommitted_at_run"] == "", \
+        "artefact was produced by uncommitted code"
+    for rel, digest in prov["code_sha256"].items():
+        if rel == "src/epsceil/pairs.py":
+            continue        # owned elsewhere; recorded, not pinned
+        got = hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()
+        assert got == digest, f"{rel} changed since results were produced"
+
+
+def _check_corpus(art):
+    s = pd.read_csv(SUMMARY)
+    s = s[s.n_pairs >= 500]
+    assert art["n_assays"] == len(s) == 48
+    assert art["n_pairs"] == int(s.n_pairs.sum())
+
+
+def test_holdout_artefact_provenance_and_corpus(ph_art):
+    _check_provenance(ph_art, "position_holdout")
+    _check_corpus(ph_art)
+
+
+def test_holdout_rule_was_fixed_in_code(ph, ph_art):
+    assert ph_art["rule"] == json.loads(json.dumps(ph.RULE))
+
+
+def test_holdout_random_split_reproduces_alt_baseline(ph_art):
+    """The random-split arm IS the committed result, per assay, exactly."""
+    rep = ph_art["reproduces_committed_random_split"]
+    assert set(rep) == {"position", "pair_rank1", "pair_rank2", "pair_rank3"}
+    for m, v in rep.items():
+        assert v["exact"], (m, v)
+        assert v["ours_median"] == pytest.approx(v["committed_median"],
+                                                 abs=1e-12)
+
+
+def test_holdout_every_model_has_a_null_at_or_below_zero(ph_art):
+    for m, strata in ph_art["summary"].items():
+        for split in ("random_pair", "whole_position_pair"):
+            assert strata["all"][split]["null_median_r2"] < 0.01, (m, split)
+
+
+def test_holdout_verdicts_follow_the_rule(ph, ph_art):
+    rows = ph_art["per_assay"]
+    cells = [r["n_cells"] for r in rows]
+    assert ph_art["position_pairs_per_assay"]["median"] == float(np.median(cells))
+    strata = {"all": rows}
+    for name, lo, hi in ph.CELL_BINS:
+        strata[name] = [r for r in rows if r["bin"] == name]
+    for m in ph.REPORT:
+        for sname, rs in strata.items():
+            got = ph.verdict_for(
+                np.array([r["random_pair"][m]["r2"] for r in rs]),
+                np.array([r["whole_position_pair"][m]["r2"] for r in rs]),
+                np.array([r["whole_position_pair"][m]["null_mean"] for r in rs]))
+            assert got["verdict"] == ph_art["verdict"][m][sname]["verdict"]
+
+
+def test_monotone_artefact_provenance_and_corpus(mf_art):
+    _check_provenance(mf_art, "monotone_fit")
+    _check_corpus(mf_art)
+
+
+def test_monotone_rule_was_fixed_in_code(mf, mf_art):
+    assert mf_art["rule"] == json.loads(json.dumps(mf.RULE))
+
+
+def test_monotone_position_model_is_alt_baseline_position(mf_art):
+    assert mf_art["reproduces_committed_position"]["exact"]
+
+
+def test_monotone_every_fitted_model_has_a_null(mf, mf_art):
+    for m in mf_art["models"]:
+        if m["model"] == "additive":
+            assert "null_median_r2" not in m
+            continue
+        assert m["null_median_r2"] < 0.01, m["model"]
+
+
+def test_monotone_verdict_follows_the_rule(mf, ph, mf_art):
+    """Recompute D42, its label null, the interval and the verdict from the
+    per-assay rows; the stored verdict must be what the rule says."""
+    per = mf_art["per_assay"]
+    d42 = np.array([p["r2"]["position+isotonic"] - p["r2"]["isotonic"]
+                    for p in per])
+    n42 = np.array([p["label_null_mean"]["position+isotonic"]
+                    - p["r2"]["isotonic"] for p in per])
+    ci = ph.boot_median_ci(d42)
+    beats = float(np.mean(d42 - n42 > mf.TIE))
+    assert ci == pytest.approx(mf_art["verdict_inputs"]["D42_ci95"], abs=1e-12)
+    assert mf_art["verdict"] == mf.decide(ci, beats)
+    d32 = np.array([p["r2"]["position"] - p["r2"]["isotonic"] for p in per])
+    assert mf_art["verdict_if_decided_by_3_minus_2"] == mf.decide(
+        ph.boot_median_ci(d32), None)
+    cap = sum(p["backfit"]["max_iter"] >= mf.BF_MAX_ITER
+              and p["backfit"]["max_last_change"] > mf.BF_TOL for p in per)
+    assert mf_art["backfit"]["assays_hitting_iteration_cap"] == cap

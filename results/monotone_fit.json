@@ -1,0 +1,2210 @@
+{
+ "question": "Does the position term's contribution survive once a monotone global nonlinearity of the additive prediction is allowed?",
+ "rule": {
+  "decision_statistic": "D42 = per-assay R2(position+isotonic, joint backfit) - R2(isotonic), R2 = epsceil.baseline.r2_resid_var out of fold: what the position term adds once a monotone global nonlinearity of the additive prediction is allowed",
+  "why_not_3_minus_2": "(3 - 2) = R2(position) - R2(isotonic) compares the two terms head to head. They can explain different variance, so (3 - 2) ~ 0 does not by itself show that position IS the calibration curve, and (3 - 2) < 0 does not show that position adds nothing; the nested (4 - 2) does. (3 - 2) is reported with its interval and with the verdict the same thresholds would give it (verdict_if_decided_by_3_minus_2), but it is not the headline",
+  "eps": 0.02,
+  "interval": "95% percentile bootstrap of the median over assays (position_holdout.boot_median_ci: 5000 resamples)",
+  "null_of_D42": "position labels permuted among the training pairs of each inner fold (isotonic still sees the real data), the same joint fit, mean over permutations, minus R2(isotonic)",
+  "beats_null": "share of assays whose D42 exceeds its own null by > 1e-9",
+  "SUPPORTED": "CI lower bound of median D42 > eps AND beats_null >= 0.75",
+  "NOT_SUPPORTED": "CI upper bound of median D42 < eps OR beats_null < 0.50",
+  "INCONCLUSIVE": "anything else",
+  "order": "SUPPORTED, then NOT_SUPPORTED, else INCONCLUSIVE (mutually exclusive)",
+  "brief_statistic_reading": "D32 = R2(position) - R2(isotonic): SUPPORTED if its CI lower bound > eps, NOT_SUPPORTED if its CI upper bound < eps, else INCONCLUSIVE",
+  "written": "before any Q2 R2 was computed"
+ },
+ "verdict": "SUPPORTED",
+ "verdict_inputs": {
+  "D42_median": 0.04675334500468842,
+  "D42_ci95": [
+   0.03812235729344371,
+   0.06857945841283147
+  ],
+  "D42_beats_label_null_share": 1.0,
+  "eps": 0.02
+ },
+ "verdict_if_decided_by_3_minus_2": "NOT_SUPPORTED",
+ "provenance": {
+  "command": "python scripts/monotone_fit.py --n-perm 5 --workers 6",
+  "cwd": "repository root",
+  "interpreter": "/home/ubuntu/.openclaw/workspace/venv/bin/python",
+  "python": "3.12.3",
+  "versions": {
+   "numpy": "2.4.2",
+   "pandas": "3.0.1",
+   "sklearn": "1.9.1"
+  },
+  "git_head": "2234a827cc3afa3f88852f0ff47039773cef8f55",
+  "code_uncommitted_at_run": "",
+  "code_sha256": {
+   "scripts/monotone_fit.py": "8c463699de4114b47ba462e614409e7844557066453de42f0ccab94ad0531e20",
+   "scripts/position_holdout.py": "45daee0b10b0ed37307391093593e4bf6b08331fe3ff10ec994af462a8cc8a2d",
+   "scripts/alt_baseline.py": "2c838cabd74c1b6d570d59f85d27e5f4185b90f9a5081fc07a203f4045ab18ae",
+   "src/epsceil/baseline.py": "edeae351495758727533e0cfe3367db42c5f6fd8ec607bf2724e7ada6e57afe7",
+   "src/epsceil/pairs.py": "471159d26ec42f9a225d7d5b8fe18e7d3deee76e087d5ab3bc518c5cac056106"
+  },
+  "pairs_sha256_of_file_hashes": "34f43c5a75de76458b09ea377db554b635d92a35fc2e64053db7b08e79af586a",
+  "started": "2026-11-16T23:54:05-0600",
+  "runtime_s": 52.0
+ },
+ "design": {
+  "assays": "48 assays with >= 500 pairs",
+  "inner_split": "KFold(5, shuffle, random_state=seed) over pairs: crossfit_assay's split",
+  "units": "x = predicted/sd, z = observed/sd = x + r; a fitted g gives r_hat = g(x) - x",
+  "lambda": "per assay, the ridge lambda alt_baseline's outer GroupKFold chose for the position model in that assay's outer fold (results/alt_baseline.json), used for every position-containing model, real and null",
+  "backfit": "alternate g and position to max change <= 0.0001 sd or 200 iterations",
+  "metric": "epsceil.baseline.r2_resid_var, out of fold, pooled over the assay's folds",
+  "null": "5 permutations per assay: residuals permuted among each fold's training pairs (alt_baseline._rng)",
+  "label_null": "5 permutations per assay: position labels permuted among each fold's training pairs, x and z untouched; the null of D42",
+  "polynomials": "linear/quadratic/cubic are references, not constrained monotone"
+ },
+ "n_assays": 48,
+ "n_pairs": 813014,
+ "reproduces_committed_position": {
+  "max_abs_per_assay_diff_vs_alt_baseline_position": 0.0,
+  "exact": true
+ },
+ "models": [
+  {
+   "model": "additive",
+   "median_r2": 0.0
+  },
+  {
+   "model": "isotonic",
+   "median_r2": 0.5755137800734197,
+   "null_median_r2": -0.03180287140822491,
+   "assays_above_null": "48/48"
+  },
+  {
+   "model": "linear",
+   "median_r2": 0.4970673143848477,
+   "null_median_r2": -0.0006879573543816187,
+   "assays_above_null": "48/48"
+  },
+  {
+   "model": "quadratic",
+   "median_r2": 0.5711923581010143,
+   "null_median_r2": -0.0003905183430094938,
+   "assays_above_null": "48/48"
+  },
+  {
+   "model": "cubic",
+   "median_r2": 0.5774229640049087,
+   "null_median_r2": -0.00017312157061973867,
+   "assays_above_null": "48/48"
+  },
+  {
+   "model": "position",
+   "median_r2": 0.33311086367109943,
+   "null_median_r2": -0.00440451015433273,
+   "assays_above_null": "48/48",
+   "label_null_median_r2": -0.0058730152127514645
+  },
+  {
+   "model": "position+isotonic",
+   "median_r2": 0.7071266997311567,
+   "null_median_r2": -0.03626550213987223,
+   "assays_above_null": "48/48",
+   "label_null_median_r2": 0.5757682293589016
+  },
+  {
+   "model": "position+isotonic_seq",
+   "median_r2": 0.6688505254321034,
+   "null_median_r2": -0.029627562598635547,
+   "assays_above_null": "48/48",
+   "label_null_median_r2": 0.5757997619998771
+  },
+  {
+   "model": "position+cubic",
+   "median_r2": 0.7037628673863843,
+   "null_median_r2": -0.006509788609320599,
+   "assays_above_null": "48/48",
+   "label_null_median_r2": 0.5777803415038785
+  }
+ ],
+ "paired": {
+  "position_minus_isotonic (3-2)": {
+   "median": -0.2492555117557213,
+   "ci95_bootstrap": [
+    -0.27462861021516216,
+    -0.19601016435827234
+   ],
+   "assays_positive": "6/48",
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": -0.26639656269966094,
+     "ci95_bootstrap": [
+      -0.5411837264552809,
+      0.01823397768335433
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": -0.19601016435827234,
+     "ci95_bootstrap": [
+      -0.26978734382734826,
+      -0.15860485508714306
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": -0.27393056234087326,
+     "ci95_bootstrap": [
+      -0.3187679319226968,
+      -0.20473222660755697
+     ]
+    }
+   }
+  },
+  "position+isotonic_minus_isotonic (4-2)": {
+   "median": 0.04675334500468842,
+   "ci95_bootstrap": [
+    0.03812235729344371,
+    0.06857945841283147
+   ],
+   "assays_positive": "48/48",
+   "null_median": -0.0010574730179308545,
+   "assays_above_null": "48/48",
+   "beats_null_share": 1.0,
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": 0.02801157626616879,
+     "ci95_bootstrap": [
+      0.003075743845614709,
+      0.14932793174795378
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": 0.06741460415567169,
+     "ci95_bootstrap": [
+      0.04924827947166521,
+      0.09337570375734994
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": 0.042002395782261115,
+     "ci95_bootstrap": [
+      0.03172245354944869,
+      0.05600767290223885
+     ]
+    }
+   }
+  },
+  "position+isotonic_minus_position (4-3)": {
+   "median": 0.2990005895823487,
+   "ci95_bootstrap": [
+    0.2600436410069913,
+    0.33330903016625024
+   ],
+   "assays_positive": "48/48",
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": 0.34376600978916205,
+     "ci95_bootstrap": [
+      0.13109395406459945,
+      0.5542090652248137
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": 0.2828962916297413,
+     "ci95_bootstrap": [
+      0.22868771249635145,
+      0.31576352509824923
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": 0.3219473150278184,
+     "ci95_bootstrap": [
+      0.2489906371452686,
+      0.405596486668359
+     ]
+    }
+   }
+  },
+  "position+isotonic_seq_minus_isotonic": {
+   "median": 0.03612329531164671,
+   "ci95_bootstrap": [
+    0.030874551519347038,
+    0.057355760334102446
+   ],
+   "assays_positive": "48/48",
+   "null_median": -0.0009698590873442325,
+   "assays_above_null": "48/48",
+   "beats_null_share": 1.0,
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": 0.01934972318717365,
+     "ci95_bootstrap": [
+      0.0037095934598398994,
+      0.09557857832124406
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": 0.053706716044776726,
+     "ci95_bootstrap": [
+      0.033669073662848104,
+      0.08138710380301117
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": 0.035123030080075224,
+     "ci95_bootstrap": [
+      0.029231083988062623,
+      0.04410801115400054
+     ]
+    }
+   }
+  },
+  "position_minus_cubic": {
+   "median": -0.23074467040880037,
+   "ci95_bootstrap": [
+    -0.26723758053927515,
+    -0.19878315804011804
+   ],
+   "assays_positive": "6/48",
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": -0.2872522510627805,
+     "ci95_bootstrap": [
+      -0.5421014853407891,
+      0.011837889064629015
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": -0.199358340914361,
+     "ci95_bootstrap": [
+      -0.2599393905780336,
+      -0.15014387716805644
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": -0.25240351248242604,
+     "ci95_bootstrap": [
+      -0.28612602283629734,
+      -0.19881565180689376
+     ]
+    }
+   }
+  },
+  "position+cubic_minus_cubic": {
+   "median": 0.04902078798919679,
+   "ci95_bootstrap": [
+    0.03950678750401593,
+    0.07445102677892823
+   ],
+   "assays_positive": "48/48",
+   "null_median": -0.0010437606110284547,
+   "assays_above_null": "48/48",
+   "beats_null_share": 1.0,
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": 0.027485860813201812,
+     "ci95_bootstrap": [
+      0.009899582389112815,
+      0.14621342713357133
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": 0.07992852526074179,
+     "ci95_bootstrap": [
+      0.05210280636873388,
+      0.10185778934495515
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": 0.040556305742270204,
+     "ci95_bootstrap": [
+      0.036548160460767476,
+      0.05777610869854366
+     ]
+    }
+   }
+  },
+  "position_minus_linear": {
+   "median": -0.13651307494459863,
+   "ci95_bootstrap": [
+    -0.1981995825418792,
+    -0.0856334969207162
+   ],
+   "assays_positive": "8/48",
+   "by_n_cells_bin": {
+    "2": {
+     "n_assays": 9,
+     "median": -0.23748341741550782,
+     "ci95_bootstrap": [
+      -0.48313891594491076,
+      0.03412167446604808
+     ]
+    },
+    "3-9": {
+     "n_assays": 23,
+     "median": -0.1715216526268265,
+     "ci95_bootstrap": [
+      -0.22827798851380643,
+      -0.08832820005306707
+     ]
+    },
+    ">=10": {
+     "n_assays": 16,
+     "median": -0.07320266051691021,
+     "ci95_bootstrap": [
+      -0.11437377057194231,
+      -0.032517156992400875
+     ]
+    }
+   }
+  }
+ },
+ "position_share_surviving": {
+  "median_D42_over_median_position_r2": 0.1403537083403285,
+  "median_position_r2": 0.33311086367109943
+ },
+ "backfit": {
+  "max_iterations_used": 34,
+  "assays_hitting_iteration_cap": 0,
+  "max_last_change": 9.986548491180969e-05
+ },
+ "per_assay": [
+  {
+   "assay": "A4_HUMAN_Seuma_2022",
+   "n_pairs": 14015,
+   "n_positions": 42,
+   "n_cells": 861,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.30602571442097604,
+    "linear": 0.21682135512497136,
+    "quadratic": 0.2804482951509054,
+    "cubic": 0.3001091396203128,
+    "position": 0.10129348781341907,
+    "position+isotonic": 0.35028412495868766,
+    "position+isotonic_seq": 0.34547092471240615,
+    "position+cubic": 0.34604790922997253
+   },
+   "null_mean": {
+    "isotonic": -0.013662970990259194,
+    "linear": -0.004059115754951969,
+    "quadratic": -0.0033628445680427,
+    "cubic": -0.004572196427420394,
+    "position": -0.003982580588822194,
+    "position+isotonic": -0.016823518995731847,
+    "position+isotonic_seq": -0.015552510120635299,
+    "position+cubic": -0.006990799389149238
+   },
+   "label_null_mean": {
+    "position": -0.005759210447105501,
+    "position+isotonic": 0.3025422662742261,
+    "position+isotonic_seq": 0.3025759871890488,
+    "position+cubic": 0.29653346206616693
+   },
+   "backfit": {
+    "max_iter": 12,
+    "max_last_change": 6.513930859752826e-05
+   }
+  },
+  {
+   "assay": "AMFR_HUMAN_Tsuboyama_2023_4G3O",
+   "n_pairs": 2103,
+   "n_positions": 5,
+   "n_cells": 7,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.33948188256373524,
+    "linear": 0.34505789021816935,
+    "quadratic": 0.3478057991212081,
+    "cubic": 0.3477561778634133,
+    "position": 0.1813179582172204,
+    "position+isotonic": 0.4642142498469617,
+    "position+isotonic_seq": 0.46071786467827736,
+    "position+cubic": 0.4724336786517367
+   },
+   "null_mean": {
+    "isotonic": -0.03280920742583682,
+    "linear": -0.007789887600293111,
+    "quadratic": -0.008933911299823415,
+    "cubic": -0.00997590061533915,
+    "position": -0.0013894919449150222,
+    "position+isotonic": -0.03479304055727343,
+    "position+isotonic_seq": -0.02886078063896704,
+    "position+cubic": -0.010514862251600388
+   },
+   "label_null_mean": {
+    "position": -0.0012074245166260988,
+    "position+isotonic": 0.33983909348489166,
+    "position+isotonic_seq": 0.33996249899379993,
+    "position+cubic": 0.3481966143809541
+   },
+   "backfit": {
+    "max_iter": 7,
+    "max_last_change": 7.383779241809663e-05
+   }
+  },
+  {
+   "assay": "BBC1_YEAST_Tsuboyama_2023_1TG0",
+   "n_pairs": 896,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6563954176401018,
+    "linear": 0.5061084611780373,
+    "quadratic": 0.6336702034139208,
+    "cubic": 0.6341749079773273,
+    "position": 0.4208650556097109,
+    "position+isotonic": 0.7238100217957735,
+    "position+isotonic_seq": 0.7101021336848785,
+    "position+cubic": 0.7141034332380691
+   },
+   "null_mean": {
+    "isotonic": -0.05517513162945886,
+    "linear": -0.015565853866999092,
+    "quadratic": -0.020352198420988142,
+    "cubic": -0.02066427107114477,
+    "position": -0.012097874819631071,
+    "position+isotonic": -0.058665281334763494,
+    "position+isotonic_seq": -0.049299814524185595,
+    "position+cubic": -0.0258618280328875
+   },
+   "label_null_mean": {
+    "position": -0.003785290656407181,
+    "position+isotonic": 0.6557728973352009,
+    "position+isotonic_seq": 0.6558436872583933,
+    "position+cubic": 0.6338445069319547
+   },
+   "backfit": {
+    "max_iter": 9,
+    "max_last_change": 9.986548491180969e-05
+   }
+  },
+  {
+   "assay": "BCHB_CHLTE_Tsuboyama_2023_2KRU",
+   "n_pairs": 677,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.2612931922889069,
+    "linear": 0.25288371917765906,
+    "quadratic": 0.25191230614951854,
+    "cubic": 0.2500154388179785,
+    "position": 0.33341608745656925,
+    "position+isotonic": 0.4400231156943143,
+    "position+isotonic_seq": 0.38965749250922566,
+    "position+cubic": 0.4426278659769908
+   },
+   "null_mean": {
+    "isotonic": -0.0678705694005501,
+    "linear": -0.005702339011118806,
+    "quadratic": -0.008463944119648393,
+    "cubic": -0.009420932707252328,
+    "position": -0.00944266836376897,
+    "position+isotonic": -0.06583050488273053,
+    "position+isotonic_seq": -0.06418359073458482,
+    "position+cubic": -0.01537990548658521
+   },
+   "label_null_mean": {
+    "position": 0.0029768492993665686,
+    "position+isotonic": 0.25878193242994846,
+    "position+isotonic_seq": 0.25973160451683375,
+    "position+cubic": 0.2501257236813922
+   },
+   "backfit": {
+    "max_iter": 10,
+    "max_last_change": 7.609726177570941e-05
+   }
+  },
+  {
+   "assay": "CAPSD_AAV2S_Sinai_2021",
+   "n_pairs": 10833,
+   "n_positions": 28,
+   "n_cells": 378,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.29179688830813266,
+    "linear": 0.13646449114828496,
+    "quadratic": 0.1916059193873184,
+    "cubic": 0.25996208731854664,
+    "position": 0.04580241745063207,
+    "position+isotonic": 0.3338712798405935,
+    "position+isotonic_seq": 0.3214106549301988,
+    "position+cubic": 0.3001948209353996
+   },
+   "null_mean": {
+    "isotonic": -0.010454404635027847,
+    "linear": -0.0007009352365423549,
+    "quadratic": 0.0017850042134913923,
+    "cubic": 0.0011336211705859078,
+    "position": -0.0023355991640080288,
+    "position+isotonic": -0.014792700117087998,
+    "position+isotonic_seq": -0.011296641836589582,
+    "position+cubic": -0.0017764162990975053
+   },
+   "label_null_mean": {
+    "position": -0.003318655965857431,
+    "position+isotonic": 0.2897490549252929,
+    "position+isotonic_seq": 0.2898437274029428,
+    "position+cubic": 0.2575130380636991
+   },
+   "backfit": {
+    "max_iter": 18,
+    "max_last_change": 8.190029105786811e-05
+   }
+  },
+  {
+   "assay": "CATR_CHLRE_Tsuboyama_2023_2AMI",
+   "n_pairs": 553,
+   "n_positions": 5,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5064008768754549,
+    "linear": 0.4631789118564006,
+    "quadratic": 0.4955949836075968,
+    "cubic": 0.5073726274278803,
+    "position": 0.20764595516797624,
+    "position+isotonic": 0.5269490330526587,
+    "position+isotonic_seq": 0.525107625051934,
+    "position+cubic": 0.5278452200436797
+   },
+   "null_mean": {
+    "isotonic": -0.07356223401694151,
+    "linear": -0.0025273755121315578,
+    "quadratic": -0.006513877083525732,
+    "cubic": -0.009993631761392474,
+    "position": -0.003591331420410504,
+    "position+isotonic": -0.0767893616275784,
+    "position+isotonic_seq": -0.07009565245335288,
+    "position+cubic": -0.015866236255766598
+   },
+   "label_null_mean": {
+    "position": -0.018098036883258527,
+    "position+isotonic": 0.49889166771220583,
+    "position+isotonic_seq": 0.4997150443153848,
+    "position+cubic": 0.5006330611398029
+   },
+   "backfit": {
+    "max_iter": 9,
+    "max_last_change": 9.674916471047457e-05
+   }
+  },
+  {
+   "assay": "CBPA2_HUMAN_Tsuboyama_2023_1O6X",
+   "n_pairs": 711,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.8284816975193661,
+    "linear": 0.7059446598791321,
+    "quadratic": 0.8097062563244537,
+    "cubic": 0.8130458352644805,
+    "position": 0.2557947110642571,
+    "position+isotonic": 0.8389662553620152,
+    "position+isotonic_seq": 0.8374398038764079,
+    "position+cubic": 0.8229454176535933
+   },
+   "null_mean": {
+    "isotonic": -0.054397263301621736,
+    "linear": -0.004780526723241496,
+    "quadratic": -0.0015202181776283296,
+    "cubic": -0.0034303111485709304,
+    "position": 0.008455041152130804,
+    "position+isotonic": -0.05203539225928577,
+    "position+isotonic_seq": -0.04196395835071069,
+    "position+cubic": -0.0032560714333358166
+   },
+   "label_null_mean": {
+    "position": -0.022059370457925675,
+    "position+isotonic": 0.8281430838928809,
+    "position+isotonic_seq": 0.8282446174348129,
+    "position+cubic": 0.8128879435179949
+   },
+   "backfit": {
+    "max_iter": 8,
+    "max_last_change": 9.115909312087944e-05
+   }
+  },
+  {
+   "assay": "CBX4_HUMAN_Tsuboyama_2023_2K28",
+   "n_pairs": 1339,
+   "n_positions": 7,
+   "n_cells": 5,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.543908809767625,
+    "linear": 0.512275813347963,
+    "quadratic": 0.5318699667799854,
+    "cubic": 0.5418018696569734,
+    "position": 0.6664274497806885,
+    "position+isotonic": 0.7644226860372163,
+    "position+isotonic_seq": 0.7113316910742971,
+    "position+cubic": 0.7690218968750627
+   },
+   "null_mean": {
+    "isotonic": -0.042020488888096265,
+    "linear": 0.0027322420226268294,
+    "quadratic": 0.0029647887649436157,
+    "cubic": 0.002302948360549828,
+    "position": -0.0056574535826547255,
+    "position+isotonic": -0.04632916211340552,
+    "position+isotonic_seq": -0.036673702813313634,
+    "position+cubic": -0.006541199256230756
+   },
+   "label_null_mean": {
+    "position": -0.014802136376195828,
+    "position+isotonic": 0.5426763245928299,
+    "position+isotonic_seq": 0.5428500402404218,
+    "position+cubic": 0.5410685446153864
+   },
+   "backfit": {
+    "max_iter": 14,
+    "max_last_change": 8.414498208619836e-05
+   }
+  },
+  {
+   "assay": "CSN4_MOUSE_Tsuboyama_2023_1UFM",
+   "n_pairs": 1942,
+   "n_positions": 4,
+   "n_cells": 6,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.4928746783528958,
+    "linear": 0.4813944130241872,
+    "quadratic": 0.5017700418032323,
+    "cubic": 0.5017776090956259,
+    "position": 0.3328056398856296,
+    "position+isotonic": 0.6749973280288952,
+    "position+isotonic_seq": 0.6579627545350557,
+    "position+cubic": 0.6763823798681499
+   },
+   "null_mean": {
+    "isotonic": -0.028866398407565375,
+    "linear": 0.003265645946486151,
+    "quadratic": 0.002791228754870012,
+    "cubic": 0.0014393144306972029,
+    "position": -0.004032855315793981,
+    "position+isotonic": -0.03171937903192499,
+    "position+isotonic_seq": -0.029445042709428694,
+    "position+cubic": -0.0033978521159165665
+   },
+   "label_null_mean": {
+    "position": 0.0034257404863951902,
+    "position+isotonic": 0.4918799100157344,
+    "position+isotonic_seq": 0.4919937297054105,
+    "position+cubic": 0.5006682145567327
+   },
+   "backfit": {
+    "max_iter": 7,
+    "max_last_change": 9.778847298780313e-05
+   }
+  },
+  {
+   "assay": "CUE1_YEAST_Tsuboyama_2023_2MYX",
+   "n_pairs": 593,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5793093061029704,
+    "linear": 0.5767201871200702,
+    "quadratic": 0.5762604520046466,
+    "cubic": 0.5765517431942042,
+    "position": 0.3777685851540862,
+    "position+isotonic": 0.6073208823691392,
+    "position+isotonic_seq": 0.5967720778184534,
+    "position+cubic": 0.604037604007406
+   },
+   "null_mean": {
+    "isotonic": -0.07003650828241512,
+    "linear": 0.010687441664959807,
+    "quadratic": 0.009247580343373741,
+    "cubic": 0.008654705955470998,
+    "position": -0.013593109628340571,
+    "position+isotonic": -0.0752324866648391,
+    "position+isotonic_seq": -0.07502206482524368,
+    "position+cubic": -0.0018020458630455983
+   },
+   "label_null_mean": {
+    "position": 0.021794550241140943,
+    "position+isotonic": 0.5791113068414164,
+    "position+isotonic_seq": 0.5791520859399649,
+    "position+cubic": 0.5760521307824685
+   },
+   "backfit": {
+    "max_iter": 11,
+    "max_last_change": 9.760112356982376e-05
+   }
+  },
+  {
+   "assay": "D7PM05_CLYGR_Somermeyer_2022",
+   "n_pairs": 9517,
+   "n_positions": 234,
+   "n_cells": 7396,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7050636737152882,
+    "linear": 0.3397003585253091,
+    "quadratic": 0.6940718481632384,
+    "cubic": 0.6940954380797277,
+    "position": 0.2253265879533668,
+    "position+isotonic": 0.728771809235721,
+    "position+isotonic_seq": 0.7265463922452834,
+    "position+cubic": 0.7102789883514969
+   },
+   "null_mean": {
+    "isotonic": -0.01142183235262655,
+    "linear": -0.002710496537298779,
+    "quadratic": -0.00018741386304050868,
+    "cubic": -0.00021984024340089282,
+    "position": -0.034398702609930255,
+    "position+isotonic": -0.044408438795542036,
+    "position+isotonic_seq": -0.042027159062630035,
+    "position+cubic": -0.032059786394193025
+   },
+   "label_null_mean": {
+    "position": -0.029661114814087463,
+    "position+isotonic": 0.6967420958748779,
+    "position+isotonic_seq": 0.6970702496579972,
+    "position+cubic": 0.6856065450045093
+   },
+   "backfit": {
+    "max_iter": 17,
+    "max_last_change": 9.925030056279205e-05
+   }
+  },
+  {
+   "assay": "DLG4_HUMAN_Faure_2021",
+   "n_pairs": 5010,
+   "n_positions": 84,
+   "n_cells": 593,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7764566898083001,
+    "linear": 0.6554035710139449,
+    "quadratic": 0.7746639118389625,
+    "cubic": 0.776320882832088,
+    "position": 0.5145697609783071,
+    "position+isotonic": 0.7819180455958575,
+    "position+isotonic_seq": 0.7800945662333361,
+    "position+cubic": 0.7812890610227748
+   },
+   "null_mean": {
+    "isotonic": -0.009177892492228223,
+    "linear": 0.00674256084030409,
+    "quadratic": 0.009865131958940055,
+    "cubic": 0.010772656916912005,
+    "position": -0.012542837922736028,
+    "position+isotonic": -0.027789995203134632,
+    "position+isotonic_seq": -0.02122609112805145,
+    "position+cubic": -0.006353027376243348
+   },
+   "label_null_mean": {
+    "position": -0.021233204900751777,
+    "position+isotonic": 0.7731031874932565,
+    "position+isotonic_seq": 0.7732127655322993,
+    "position+cubic": 0.7730454442994872
+   },
+   "backfit": {
+    "max_iter": 34,
+    "max_last_change": 9.806875551071625e-05
+   }
+  },
+  {
+   "assay": "DNJA1_HUMAN_Tsuboyama_2023_2LO1",
+   "n_pairs": 1030,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.8137374419251276,
+    "linear": 0.7673868202237719,
+    "quadratic": 0.7781484009696821,
+    "cubic": 0.7990482222879991,
+    "position": 0.5391088317099655,
+    "position+isotonic": 0.8735269116612895,
+    "position+isotonic_seq": 0.8503352126965983,
+    "position+cubic": 0.8680217505851138
+   },
+   "null_mean": {
+    "isotonic": -0.06994098527186839,
+    "linear": -0.009050919688001157,
+    "quadratic": -0.012590194117655584,
+    "cubic": -0.017526437856449185,
+    "position": -0.01022449110488315,
+    "position+isotonic": -0.07142896730551666,
+    "position+isotonic_seq": -0.0598859169202699,
+    "position+cubic": -0.021930562035322752
+   },
+   "label_null_mean": {
+    "position": -0.008036017943837659,
+    "position+isotonic": 0.81411896523666,
+    "position+isotonic_seq": 0.8141479706611149,
+    "position+cubic": 0.799475203117298
+   },
+   "backfit": {
+    "max_iter": 15,
+    "max_last_change": 9.386093581270627e-05
+   }
+  },
+  {
+   "assay": "DOCK1_MOUSE_Tsuboyama_2023_2M0Y",
+   "n_pairs": 1647,
+   "n_positions": 9,
+   "n_cells": 5,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6972043099118594,
+    "linear": 0.6922822888892275,
+    "quadratic": 0.693994196898589,
+    "cubic": 0.6941183508303062,
+    "position": 0.4446877572579174,
+    "position+isotonic": 0.7397439702365523,
+    "position+isotonic_seq": 0.7329122106888397,
+    "position+cubic": 0.7366551904612041
+   },
+   "null_mean": {
+    "isotonic": -0.02992408237595774,
+    "linear": 0.003927047126640981,
+    "quadratic": 0.003441531179916746,
+    "cubic": 0.0032817898800900245,
+    "position": 0.005406594805445785,
+    "position+isotonic": -0.03703283783126654,
+    "position+isotonic_seq": -0.019144529828791824,
+    "position+cubic": -0.0016757611178663812
+   },
+   "label_null_mean": {
+    "position": -0.009565817909272311,
+    "position+isotonic": 0.6992163146396762,
+    "position+isotonic_seq": 0.6991358551684228,
+    "position+cubic": 0.6959004178702479
+   },
+   "backfit": {
+    "max_iter": 21,
+    "max_last_change": 9.520330813633793e-05
+   }
+  },
+  {
+   "assay": "EPHB2_HUMAN_Tsuboyama_2023_1F0M",
+   "n_pairs": 721,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.667515927290101,
+    "linear": 0.6315680349481407,
+    "quadratic": 0.6474058740444448,
+    "cubic": 0.6582876583163888,
+    "position": 0.151429219358731,
+    "position+isotonic": 0.7056382845835447,
+    "position+isotonic_seq": 0.6987348657597694,
+    "position+cubic": 0.6972467464212715
+   },
+   "null_mean": {
+    "isotonic": -0.036613788760554766,
+    "linear": 0.014414008384276,
+    "quadratic": 0.010397967206777835,
+    "cubic": 0.009108792386358977,
+    "position": -0.0029977515759798566,
+    "position+isotonic": -0.03549816644847792,
+    "position+isotonic_seq": -0.03804017040106824,
+    "position+cubic": 0.008551811137421494
+   },
+   "label_null_mean": {
+    "position": -0.015329592123497982,
+    "position+isotonic": 0.6652689810930473,
+    "position+isotonic_seq": 0.6653214328460985,
+    "position+cubic": 0.6558887847434987
+   },
+   "backfit": {
+    "max_iter": 6,
+    "max_last_change": 2.4812356721637396e-05
+   }
+  },
+  {
+   "assay": "FECA_ECOLI_Tsuboyama_2023_2D1U",
+   "n_pairs": 655,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.4931562875247417,
+    "linear": 0.48735551797291665,
+    "quadratic": 0.5182029568255602,
+    "cubic": 0.5183173529154909,
+    "position": -0.006570345003103828,
+    "position+isotonic": 0.5158153625982327,
+    "position+isotonic_seq": 0.5125060107119154,
+    "position+cubic": 0.539247610546912
+   },
+   "null_mean": {
+    "isotonic": -0.034662937992770274,
+    "linear": 0.016844751743900387,
+    "quadratic": 0.01807385025385968,
+    "cubic": 0.019240922547724627,
+    "position": -0.007606451987899332,
+    "position+isotonic": -0.03913324089279877,
+    "position+isotonic_seq": -0.03870658173165871,
+    "position+cubic": 0.016965188802274
+   },
+   "label_null_mean": {
+    "position": -0.007544425363047136,
+    "position+isotonic": 0.49328535422067754,
+    "position+isotonic_seq": 0.49324566359630423,
+    "position+cubic": 0.5179784848810303
+   },
+   "backfit": {
+    "max_iter": 5,
+    "max_last_change": 9.116708094730752e-05
+   }
+  },
+  {
+   "assay": "GFP_AEQVI_Sarkisyan_2016",
+   "n_pairs": 11954,
+   "n_positions": 233,
+   "n_cells": 8449,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.45305968461330215,
+    "linear": 0.058173579119125685,
+    "quadratic": 0.3296689867079028,
+    "cubic": 0.329625910812136,
+    "position": 0.08657000770106482,
+    "position+isotonic": 0.49216649436942383,
+    "position+isotonic_seq": 0.4884658129335949,
+    "position+cubic": 0.37045129069353644
+   },
+   "null_mean": {
+    "isotonic": -0.008848484515112776,
+    "linear": -0.0010348146289619997,
+    "quadratic": -0.0014370008272854395,
+    "cubic": -0.0011958975438127518,
+    "position": -0.02220411701839824,
+    "position+isotonic": -0.030968340032462606,
+    "position+isotonic_seq": -0.02913100709025209,
+    "position+cubic": -0.02214045233850248
+   },
+   "label_null_mean": {
+    "position": -0.02553915674227576,
+    "position+isotonic": 0.44019250661655596,
+    "position+isotonic_seq": 0.4405468951871006,
+    "position+cubic": 0.3138581658605168
+   },
+   "backfit": {
+    "max_iter": 20,
+    "max_last_change": 9.104162522599601e-05
+   }
+  },
+  {
+   "assay": "GRB2_HUMAN_Faure_2021",
+   "n_pairs": 62189,
+   "n_positions": 55,
+   "n_cells": 1407,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.731502401396817,
+    "linear": 0.48248590625019216,
+    "quadratic": 0.7270569634467283,
+    "cubic": 0.7271819514994312,
+    "position": 0.3152229034882854,
+    "position+isotonic": 0.7404844086373751,
+    "position+isotonic_seq": 0.7401484762479824,
+    "position+cubic": 0.7359039132265622
+   },
+   "null_mean": {
+    "isotonic": -0.0019018352156860985,
+    "linear": 0.0016936301828529344,
+    "quadratic": 0.0012515546949828816,
+    "cubic": 0.0012601407682554023,
+    "position": -0.00033419999223429644,
+    "position+isotonic": -0.002761481587070058,
+    "position+isotonic_seq": -0.0024103985183646427,
+    "position+cubic": 0.0004933405348553022
+   },
+   "label_null_mean": {
+    "position": -0.00048368160975265084,
+    "position+isotonic": 0.7312747016134271,
+    "position+isotonic_seq": 0.731280339522735,
+    "position+cubic": 0.7269321480748717
+   },
+   "backfit": {
+    "max_iter": 13,
+    "max_last_change": 9.342829484536297e-05
+   }
+  },
+  {
+   "assay": "HECD1_HUMAN_Tsuboyama_2023_3DKM",
+   "n_pairs": 4288,
+   "n_positions": 16,
+   "n_cells": 18,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7327640576699612,
+    "linear": 0.6620591709987043,
+    "quadratic": 0.7199714049692321,
+    "cubic": 0.7200934196890412,
+    "position": 0.6203119688550047,
+    "position+isotonic": 0.8389618359433599,
+    "position+isotonic_seq": 0.8285821289938179,
+    "position+cubic": 0.834871442942871
+   },
+   "null_mean": {
+    "isotonic": -0.011644308713935403,
+    "linear": 0.005145266854266817,
+    "quadratic": 0.008527394205426853,
+    "cubic": 0.008196246041790834,
+    "position": -0.005372434707841656,
+    "position+isotonic": -0.01750855112170402,
+    "position+isotonic_seq": -0.014814967896023924,
+    "position+cubic": 0.0009595613972805727
+   },
+   "label_null_mean": {
+    "position": -0.0159624017743345,
+    "position+isotonic": 0.7312493623329623,
+    "position+isotonic_seq": 0.731339001524018,
+    "position+cubic": 0.7182826709278582
+   },
+   "backfit": {
+    "max_iter": 17,
+    "max_last_change": 9.058757194418954e-05
+   }
+  },
+  {
+   "assay": "HIS7_YEAST_Pokusaeva_2019",
+   "n_pairs": 1243,
+   "n_positions": 91,
+   "n_cells": 411,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.2874005628045754,
+    "linear": 0.2486719841341728,
+    "quadratic": 0.23533381854561197,
+    "cubic": 0.24002577703246752,
+    "position": 0.3539746822298776,
+    "position+isotonic": 0.4599066315919387,
+    "position+isotonic_seq": 0.46521228905614187,
+    "position+cubic": 0.4462130422478572
+   },
+   "null_mean": {
+    "isotonic": -0.014037720450910585,
+    "linear": -0.0016045289983391386,
+    "quadratic": -0.00107948725023439,
+    "cubic": 0.002047564834202631,
+    "position": -0.07856836371297189,
+    "position+isotonic": -0.09657761575173765,
+    "position+isotonic_seq": -0.07857389641496156,
+    "position+cubic": -0.07675327758806141
+   },
+   "label_null_mean": {
+    "position": -0.08177876227274261,
+    "position+isotonic": 0.22256055057241603,
+    "position+isotonic_seq": 0.2245383034957918,
+    "position+cubic": 0.17272245602774633
+   },
+   "backfit": {
+    "max_iter": 20,
+    "max_last_change": 9.45696338026103e-05
+   }
+  },
+  {
+   "assay": "ISDH_STAAW_Tsuboyama_2023_2LHR",
+   "n_pairs": 996,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.12187023175692568,
+    "linear": 0.12227834665666304,
+    "quadratic": 0.12968720717089843,
+    "cubic": 0.1350512426406134,
+    "position": 0.16278103516981413,
+    "position+isotonic": 0.21524593551427562,
+    "position+isotonic_seq": 0.21442251127459777,
+    "position+cubic": 0.23380254901204822
+   },
+   "null_mean": {
+    "isotonic": -0.055581608713832595,
+    "linear": -0.004436307843197462,
+    "quadratic": -0.004017292486384471,
+    "cubic": -0.007991512922144572,
+    "position": -0.002735588081219009,
+    "position+isotonic": -0.055491386070018134,
+    "position+isotonic_seq": -0.05054250996651884,
+    "position+cubic": -0.00984127347979651
+   },
+   "label_null_mean": {
+    "position": 0.0025704996443015383,
+    "position+isotonic": 0.12632072018304713,
+    "position+isotonic_seq": 0.12598105303633805,
+    "position+cubic": 0.1394265066405328
+   },
+   "backfit": {
+    "max_iter": 6,
+    "max_last_change": 8.670701387059054e-05
+   }
+  },
+  {
+   "assay": "MAFG_MOUSE_Tsuboyama_2023_1K1V",
+   "n_pairs": 667,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.751569677611416,
+    "linear": 0.7278094751503891,
+    "quadratic": 0.7289232923713104,
+    "cubic": 0.7478240236129177,
+    "position": 0.49032605773488125,
+    "position+isotonic": 0.7546454214570307,
+    "position+isotonic_seq": 0.7552792710712559,
+    "position+cubic": 0.7596607548542402
+   },
+   "null_mean": {
+    "isotonic": -0.06877391889458098,
+    "linear": -0.01266848082623424,
+    "quadratic": -0.01513698555609273,
+    "cubic": -0.018690440867187207,
+    "position": -0.012564892618106093,
+    "position+isotonic": -0.06849422482543446,
+    "position+isotonic_seq": -0.0641572510663142,
+    "position+cubic": -0.021514165593889144
+   },
+   "label_null_mean": {
+    "position": 4.0752016536416136e-05,
+    "position+isotonic": 0.7496491316908028,
+    "position+isotonic_seq": 0.7498496164783571,
+    "position+cubic": 0.745750922215018
+   },
+   "backfit": {
+    "max_iter": 14,
+    "max_last_change": 8.734516825847916e-05
+   }
+  },
+  {
+   "assay": "MBD11_ARATH_Tsuboyama_2023_6ACV",
+   "n_pairs": 925,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7668256666155647,
+    "linear": 0.6791136609020074,
+    "quadratic": 0.7646722825696819,
+    "cubic": 0.7647065991198605,
+    "position": 0.44497578920191727,
+    "position+isotonic": 0.7863711561548552,
+    "position+isotonic_seq": 0.7784494889650764,
+    "position+cubic": 0.7816877678623668
+   },
+   "null_mean": {
+    "isotonic": -0.0586725918737772,
+    "linear": -0.007955174959005107,
+    "quadratic": -0.012630853504422945,
+    "cubic": -0.014939149086344217,
+    "position": 0.005804572224953408,
+    "position+isotonic": -0.05325472271157108,
+    "position+isotonic_seq": -0.04011599430476598,
+    "position+cubic": -0.012577631142467172
+   },
+   "label_null_mean": {
+    "position": -0.032159986428095075,
+    "position+isotonic": 0.7643921555349749,
+    "position+isotonic_seq": 0.7645705225963692,
+    "position+cubic": 0.7627157911750819
+   },
+   "backfit": {
+    "max_iter": 17,
+    "max_last_change": 9.917128821718135e-05
+   }
+  },
+  {
+   "assay": "MYO3_YEAST_Tsuboyama_2023_2BTT",
+   "n_pairs": 2253,
+   "n_positions": 14,
+   "n_cells": 8,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6729622313637257,
+    "linear": 0.5798382775589154,
+    "quadratic": 0.647473953034249,
+    "cubic": 0.6543955574124515,
+    "position": 0.6144747639990755,
+    "position+isotonic": 0.7630252684592669,
+    "position+isotonic_seq": 0.7529667252129151,
+    "position+cubic": 0.7562533467574066
+   },
+   "null_mean": {
+    "isotonic": -0.03698023889206272,
+    "linear": -0.004811290030547833,
+    "quadratic": -0.0055153917445623256,
+    "cubic": -0.006379221222648335,
+    "position": -0.004939994699728456,
+    "position+isotonic": -0.03814374787975021,
+    "position+isotonic_seq": -0.029810082487842404,
+    "position+cubic": -0.01031554093088829
+   },
+   "label_null_mean": {
+    "position": -0.005406003846580543,
+    "position+isotonic": 0.6725002101209214,
+    "position+isotonic_seq": 0.6725369146709103,
+    "position+cubic": 0.654045902320116
+   },
+   "backfit": {
+    "max_iter": 21,
+    "max_last_change": 9.754914698095751e-05
+   }
+  },
+  {
+   "assay": "NKX31_HUMAN_Tsuboyama_2023_2L9R",
+   "n_pairs": 1333,
+   "n_positions": 5,
+   "n_cells": 4,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.34857477210651566,
+    "linear": 0.35009306138439367,
+    "quadratic": 0.35183050936699056,
+    "cubic": 0.35246412216072975,
+    "position": 0.17448032168374572,
+    "position+isotonic": 0.4461309088300697,
+    "position+isotonic_seq": 0.4431355992481839,
+    "position+cubic": 0.4487796942185187
+   },
+   "null_mean": {
+    "isotonic": -0.03741812153686266,
+    "linear": -0.00482336164662196,
+    "quadratic": -0.006089470337211344,
+    "cubic": -0.008984715232741558,
+    "position": 0.008328892874279514,
+    "position+isotonic": -0.03484543356804996,
+    "position+isotonic_seq": -0.023878311300608045,
+    "position+cubic": -0.006478377962410442
+   },
+   "label_null_mean": {
+    "position": -0.002543744815133797,
+    "position+isotonic": 0.35090391343303845,
+    "position+isotonic_seq": 0.3508513673970126,
+    "position+cubic": 0.35528278784566725
+   },
+   "backfit": {
+    "max_iter": 6,
+    "max_last_change": 6.179980588394418e-05
+   }
+  },
+  {
+   "assay": "NUSA_ECOLI_Tsuboyama_2023_1WCL",
+   "n_pairs": 722,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.826212193444546,
+    "linear": 0.7681673829341759,
+    "quadratic": 0.8275921257654311,
+    "cubic": 0.8271299523300542,
+    "position": 0.2850284669892651,
+    "position+isotonic": 0.8262357284676366,
+    "position+isotonic_seq": 0.8271277909756418,
+    "position+cubic": 0.8290499207970321
+   },
+   "null_mean": {
+    "isotonic": -0.07110971677871025,
+    "linear": 0.004076847460328903,
+    "quadratic": 0.004196853837591719,
+    "cubic": -0.00010286407036521616,
+    "position": 0.0014436926885159184,
+    "position+isotonic": -0.070110672310883,
+    "position+isotonic_seq": -0.061316585725032936,
+    "position+cubic": 0.0007359742598704421
+   },
+   "label_null_mean": {
+    "position": 0.0024184603491215206,
+    "position+isotonic": 0.8261294898024811,
+    "position+isotonic_seq": 0.8261763989762946,
+    "position+cubic": 0.827161545129823
+   },
+   "backfit": {
+    "max_iter": 8,
+    "max_last_change": 7.24512513843173e-05
+   }
+  },
+  {
+   "assay": "OBSCN_HUMAN_Tsuboyama_2023_1V1C",
+   "n_pairs": 1982,
+   "n_positions": 11,
+   "n_cells": 6,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.9132922414030294,
+    "linear": 0.8531458834755161,
+    "quadratic": 0.9066890592255258,
+    "cubic": 0.9107424781149563,
+    "position": 0.6435048975756812,
+    "position+isotonic": 0.9140282658809733,
+    "position+isotonic_seq": 0.9138521099188115,
+    "position+cubic": 0.9115071588696958
+   },
+   "null_mean": {
+    "isotonic": -0.02803406189136961,
+    "linear": 0.003675289098984802,
+    "quadratic": 0.007232203745018451,
+    "cubic": 0.007279756330807174,
+    "position": 0.005317965548372383,
+    "position+isotonic": -0.031161691610652832,
+    "position+isotonic_seq": -0.020477117503896823,
+    "position+cubic": 0.004449661560492623
+   },
+   "label_null_mean": {
+    "position": 0.01072403501621746,
+    "position+isotonic": 0.9131660394411056,
+    "position+isotonic_seq": 0.9131813981774191,
+    "position+cubic": 0.9105884232311233
+   },
+   "backfit": {
+    "max_iter": 20,
+    "max_last_change": 9.694770445793643e-05
+   }
+  },
+  {
+   "assay": "PABP_YEAST_Melamed_2013",
+   "n_pairs": 36370,
+   "n_positions": 75,
+   "n_cells": 900,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5428975711760873,
+    "linear": 0.33241048743283463,
+    "quadratic": 0.5241184432014988,
+    "cubic": 0.5309864754471123,
+    "position": 0.24677699051211843,
+    "position+isotonic": 0.5800860206783687,
+    "position+isotonic_seq": 0.5794362610224004,
+    "position+cubic": 0.5712737070502523
+   },
+   "null_mean": {
+    "isotonic": -0.00612260253179826,
+    "linear": 0.0005219211644311716,
+    "quadratic": -0.000593622822978479,
+    "cubic": -0.0006999830676218677,
+    "position": -0.0025124840906584735,
+    "position+isotonic": -0.007733117863857419,
+    "position+isotonic_seq": -0.007812195279791734,
+    "position+cubic": -0.0023701272080731027
+   },
+   "label_null_mean": {
+    "position": -0.00309887693214459,
+    "position+isotonic": 0.541777393477387,
+    "position+isotonic_seq": 0.5417856341000629,
+    "position+cubic": 0.5299101170620479
+   },
+   "backfit": {
+    "max_iter": 14,
+    "max_last_change": 9.940385175925825e-05
+   }
+  },
+  {
+   "assay": "PITX2_HUMAN_Tsuboyama_2023_2L7M",
+   "n_pairs": 861,
+   "n_positions": 5,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.24104279697915,
+    "linear": 0.19323574341818295,
+    "quadratic": 0.23653832307824996,
+    "cubic": 0.24307542841910146,
+    "position": 0.021714090791356444,
+    "position+isotonic": 0.2504018032877079,
+    "position+isotonic_seq": 0.24621312996468836,
+    "position+cubic": 0.25299377834644343
+   },
+   "null_mean": {
+    "isotonic": -0.027888945260990283,
+    "linear": 0.00520327030069625,
+    "quadratic": 0.003488804992844563,
+    "cubic": 0.0001084657792957744,
+    "position": -0.002227756605025566,
+    "position+isotonic": -0.03061861014427194,
+    "position+isotonic_seq": -0.027014266807163123,
+    "position+cubic": -0.00014948046138558714
+   },
+   "label_null_mean": {
+    "position": -0.009049450615196974,
+    "position+isotonic": 0.23903547438464545,
+    "position+isotonic_seq": 0.23952246428429907,
+    "position+cubic": 0.2414774115174602
+   },
+   "backfit": {
+    "max_iter": 7,
+    "max_last_change": 8.957569781459229e-05
+   }
+  },
+  {
+   "assay": "POLG_PESV_Tsuboyama_2023_2MXD",
+   "n_pairs": 4134,
+   "n_positions": 12,
+   "n_cells": 13,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6786361261013498,
+    "linear": 0.6430513328820491,
+    "quadratic": 0.6760850962436666,
+    "cubic": 0.6774301901059699,
+    "position": 0.3923558380665819,
+    "position+isotonic": 0.808459388009957,
+    "position+isotonic_seq": 0.806566706251362,
+    "position+cubic": 0.80965723934239
+   },
+   "null_mean": {
+    "isotonic": -0.01111491642752398,
+    "linear": 0.011006463487964302,
+    "quadratic": 0.011716960163542556,
+    "cubic": 0.012191043578152016,
+    "position": 0.003643924080104499,
+    "position+isotonic": -0.010240431682891415,
+    "position+isotonic_seq": -0.009209721905236789,
+    "position+cubic": 0.013230998111586323
+   },
+   "label_null_mean": {
+    "position": 0.0043054436760068485,
+    "position+isotonic": 0.6781617410885218,
+    "position+isotonic_seq": 0.6782342743546238,
+    "position+cubic": 0.6767874671452321
+   },
+   "backfit": {
+    "max_iter": 9,
+    "max_last_change": 9.43696991210774e-05
+   }
+  },
+  {
+   "assay": "PR40A_HUMAN_Tsuboyama_2023_1UZC",
+   "n_pairs": 851,
+   "n_positions": 3,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6943937314336576,
+    "linear": 0.697501558579475,
+    "quadratic": 0.6977820601346296,
+    "cubic": 0.6977419079897462,
+    "position": 0.4983835670753852,
+    "position+isotonic": 0.8141470921736345,
+    "position+isotonic_seq": 0.805844732551749,
+    "position+cubic": 0.8184076506208315
+   },
+   "null_mean": {
+    "isotonic": -0.08243606038468947,
+    "linear": -0.013743821389221079,
+    "quadratic": -0.014786701319191109,
+    "cubic": -0.015369018032579595,
+    "position": -0.0025644373607468076,
+    "position+isotonic": -0.07562533562384988,
+    "position+isotonic_seq": -0.06522719260801262,
+    "position+cubic": -0.010294391906577239
+   },
+   "label_null_mean": {
+    "position": -0.005672685318866199,
+    "position+isotonic": 0.6964850669451221,
+    "position+isotonic_seq": 0.696449705349423,
+    "position+cubic": 0.7000001212369424
+   },
+   "backfit": {
+    "max_iter": 13,
+    "max_last_change": 9.973722754408332e-05
+   }
+  },
+  {
+   "assay": "Q6WV12_9MAXI_Somermeyer_2022",
+   "n_pairs": 15717,
+   "n_positions": 218,
+   "n_cells": 10335,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.4101798281706487,
+    "linear": 0.15966806998081884,
+    "quadratic": 0.3031185177029353,
+    "cubic": 0.3917111429176805,
+    "position": 0.15296597224781672,
+    "position+isotonic": 0.46895600641963864,
+    "position+isotonic_seq": 0.4542878393246492,
+    "position+cubic": 0.458068228342152
+   },
+   "null_mean": {
+    "isotonic": -0.012436763879623803,
+    "linear": -0.00136982101578611,
+    "quadratic": -0.0027040869905709864,
+    "cubic": -0.0029651453124112546,
+    "position": -0.017792194305429686,
+    "position+isotonic": -0.03137296111812402,
+    "position+isotonic_seq": -0.028100119900285537,
+    "position+cubic": -0.021056915817329623
+   },
+   "label_null_mean": {
+    "position": -0.01898219185701362,
+    "position+isotonic": 0.39885216110683197,
+    "position+isotonic_seq": 0.3992260198263681,
+    "position+cubic": 0.3802422597403748
+   },
+   "backfit": {
+    "max_iter": 33,
+    "max_last_change": 8.909600681494823e-05
+   }
+  },
+  {
+   "assay": "Q8WTC7_9CNID_Somermeyer_2022",
+   "n_pairs": 10822,
+   "n_positions": 233,
+   "n_cells": 7789,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.4299075223275093,
+    "linear": 0.1764618840927985,
+    "quadratic": 0.33335424854767326,
+    "cubic": 0.41601025199330677,
+    "position": 0.14393332647575574,
+    "position+isotonic": 0.47183792235957067,
+    "position+isotonic_seq": 0.46249922510330466,
+    "position+cubic": 0.46065765204600395
+   },
+   "null_mean": {
+    "isotonic": -0.004322614607404862,
+    "linear": 0.004797260768503575,
+    "quadratic": 0.005598876410777232,
+    "cubic": 0.006791937741089016,
+    "position": -0.022806261363134885,
+    "position+isotonic": -0.031282681857184746,
+    "position+isotonic_seq": -0.027716170686642005,
+    "position+cubic": -0.019041627211865197
+   },
+   "label_null_mean": {
+    "position": -0.022931086535189094,
+    "position+isotonic": 0.4144400029853591,
+    "position+isotonic_seq": 0.41472237616080354,
+    "position+cubic": 0.4004045211111344
+   },
+   "backfit": {
+    "max_iter": 29,
+    "max_last_change": 8.438332358551293e-05
+   }
+  },
+  {
+   "assay": "RASK_HUMAN_Weng_2022_abundance",
+   "n_pairs": 22214,
+   "n_positions": 181,
+   "n_cells": 1413,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.3273610254220355,
+    "linear": 0.23404875011240278,
+    "quadratic": 0.31479003355472956,
+    "cubic": 0.3274309997754995,
+    "position": 0.16983760043054486,
+    "position+isotonic": 0.38336869832427434,
+    "position+isotonic_seq": 0.37588600646482484,
+    "position+cubic": 0.38520710847404316
+   },
+   "null_mean": {
+    "isotonic": -0.008185780967230683,
+    "linear": 0.0007061471130674457,
+    "quadratic": -0.0006997026095907577,
+    "cubic": -0.000883287162598112,
+    "position": -0.009719969009510577,
+    "position+isotonic": -0.020111522166837183,
+    "position+isotonic_seq": -0.017007000261687687,
+    "position+cubic": -0.011851313377115735
+   },
+   "label_null_mean": {
+    "position": -0.011340127277808153,
+    "position+isotonic": 0.32012723951285504,
+    "position+isotonic_seq": 0.32025354960445834,
+    "position+cubic": 0.3203102924354114
+   },
+   "backfit": {
+    "max_iter": 21,
+    "max_last_change": 9.686023563659774e-05
+   }
+  },
+  {
+   "assay": "RASK_HUMAN_Weng_2022_binding-DARPin_K55",
+   "n_pairs": 20969,
+   "n_positions": 184,
+   "n_cells": 1432,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7448587195514574,
+    "linear": 0.4750371182453226,
+    "quadratic": 0.7354816476543271,
+    "cubic": 0.7365917114475744,
+    "position": 0.4260907876287606,
+    "position+isotonic": 0.7884152105467426,
+    "position+isotonic_seq": 0.7796986513913151,
+    "position+cubic": 0.7760984989515903
+   },
+   "null_mean": {
+    "isotonic": -0.008809456242773983,
+    "linear": -0.0006749794722208824,
+    "quadratic": -0.0009394716100294964,
+    "cubic": -0.0008528743439661923,
+    "position": -0.010305323087231422,
+    "position+isotonic": -0.01911545123376568,
+    "position+isotonic_seq": -0.016363077252674652,
+    "position+cubic": -0.010587879913785292
+   },
+   "label_null_mean": {
+    "position": -0.009767932248390565,
+    "position+isotonic": 0.7421745090918482,
+    "position+isotonic_seq": 0.7422231183004493,
+    "position+cubic": 0.7337149631783185
+   },
+   "backfit": {
+    "max_iter": 33,
+    "max_last_change": 9.784334807161343e-05
+   }
+  },
+  {
+   "assay": "RCRO_LAMBD_Tsuboyama_2023_1ORC",
+   "n_pairs": 1083,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.571718254043869,
+    "linear": 0.5133856553787661,
+    "quadratic": 0.5430167282491414,
+    "cubic": 0.5782941848156131,
+    "position": 0.22685476163724272,
+    "position+isotonic": 0.6712524126062007,
+    "position+isotonic_seq": 0.6327230586672972,
+    "position+cubic": 0.6601466673168157
+   },
+   "null_mean": {
+    "isotonic": -0.05229643315302002,
+    "linear": -0.006235205820448298,
+    "quadratic": -0.007312820055363112,
+    "cubic": -0.00842917208492966,
+    "position": -0.009221931109378967,
+    "position+isotonic": -0.05650119303348848,
+    "position+isotonic_seq": -0.0505836333793062,
+    "position+cubic": -0.00967382625304516
+   },
+   "label_null_mean": {
+    "position": -0.014912324969453161,
+    "position+isotonic": 0.5724251518763868,
+    "position+isotonic_seq": 0.5724474380597893,
+    "position+cubic": 0.5795085522252885
+   },
+   "backfit": {
+    "max_iter": 24,
+    "max_last_change": 9.610680869635846e-05
+   }
+  },
+  {
+   "assay": "SDA_BACSU_Tsuboyama_2023_1PV0",
+   "n_pairs": 1936,
+   "n_positions": 4,
+   "n_cells": 6,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.723556434497471,
+    "linear": 0.6883552949890903,
+    "quadratic": 0.6990626525986607,
+    "cubic": 0.6993863652789898,
+    "position": 0.6781728490835899,
+    "position+isotonic": 0.8140302379639104,
+    "position+isotonic_seq": 0.7929834524960968,
+    "position+cubic": 0.8092900998122088
+   },
+   "null_mean": {
+    "isotonic": -0.030796535390613,
+    "linear": 5.709713114547821e-05,
+    "quadratic": 0.0010952094650229726,
+    "cubic": -1.2186015588033783e-05,
+    "position": -0.0018630014112735126,
+    "position+isotonic": -0.029120751543434853,
+    "position+isotonic_seq": -0.020435817820595538,
+    "position+cubic": -0.0024157986582148184
+   },
+   "label_null_mean": {
+    "position": -0.01228750936082441,
+    "position+isotonic": 0.7220747346348434,
+    "position+isotonic_seq": 0.7221520195230561,
+    "position+cubic": 0.6981897930399124
+   },
+   "backfit": {
+    "max_iter": 29,
+    "max_last_change": 9.971001830977322e-05
+   }
+  },
+  {
+   "assay": "SPA_STAAU_Tsuboyama_2023_1LP1",
+   "n_pairs": 1070,
+   "n_positions": 6,
+   "n_cells": 3,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5521590405223075,
+    "linear": 0.5111130225561296,
+    "quadratic": 0.5661242641973822,
+    "cubic": 0.564430355152414,
+    "position": 0.3935541854351644,
+    "position+isotonic": 0.6014073199939727,
+    "position+isotonic_seq": 0.5830335920416545,
+    "position+cubic": 0.6165331615211479
+   },
+   "null_mean": {
+    "isotonic": -0.0413159639116857,
+    "linear": 0.0077224769383375195,
+    "quadratic": 0.005182451826234158,
+    "cubic": 0.004475210981825284,
+    "position": 0.003845940464786013,
+    "position+isotonic": -0.037886483580301535,
+    "position+isotonic_seq": -0.03082069017920175,
+    "position+cubic": 0.004130188991186135
+   },
+   "label_null_mean": {
+    "position": 0.012327810278632678,
+    "position+isotonic": 0.5523458318983535,
+    "position+isotonic_seq": 0.5525132780753401,
+    "position+cubic": 0.5650451096893396
+   },
+   "backfit": {
+    "max_iter": 13,
+    "max_last_change": 6.971377605025086e-05
+   }
+  },
+  {
+   "assay": "SPG1_STRSG_Olson_2014",
+   "n_pairs": 535917,
+   "n_positions": 55,
+   "n_cells": 1485,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.743025034635038,
+    "linear": 0.3442453179942194,
+    "quadratic": 0.7072706946311409,
+    "cubic": 0.7166945946356794,
+    "position": 0.2620511466422569,
+    "position+isotonic": 0.7747474881844867,
+    "position+isotonic_seq": 0.7722561186231006,
+    "position+cubic": 0.7532427550964469
+   },
+   "null_mean": {
+    "isotonic": -0.001032616887984794,
+    "linear": -0.0002305996168983082,
+    "quadratic": -0.00017572255909257262,
+    "cubic": -0.0001264028978385845,
+    "position": -0.0004535242156630037,
+    "position+isotonic": -0.001330175549835344,
+    "position+isotonic_seq": -0.0011687493483892198,
+    "position+cubic": -0.00041328929819244297
+   },
+   "label_null_mean": {
+    "position": -4.1710491140323214e-05,
+    "position+isotonic": 0.7430516874989234,
+    "position+isotonic_seq": 0.7430517800419347,
+    "position+cubic": 0.716723585651587
+   },
+   "backfit": {
+    "max_iter": 21,
+    "max_last_change": 8.434138447083184e-05
+   }
+  },
+  {
+   "assay": "SPG1_STRSG_Wu_2016",
+   "n_pairs": 2091,
+   "n_positions": 4,
+   "n_cells": 6,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.767240236808382,
+    "linear": 0.6830620355761552,
+    "quadratic": 0.7244967390864174,
+    "cubic": 0.7307517080677141,
+    "position": 0.39667738609828407,
+    "position+isotonic": 0.7791049043475019,
+    "position+isotonic_seq": 0.7789295750286601,
+    "position+cubic": 0.7485540435062583
+   },
+   "null_mean": {
+    "isotonic": -0.013862105388535207,
+    "linear": 0.004140770887914225,
+    "quadratic": 0.004010515841705975,
+    "cubic": 0.002995152343263685,
+    "position": 0.007816660014661548,
+    "position+isotonic": -0.016537409761041278,
+    "position+isotonic_seq": -0.0039215490329748805,
+    "position+cubic": 0.002812371461741248
+   },
+   "label_null_mean": {
+    "position": -0.0034583728208141375,
+    "position+isotonic": 0.7664829222395322,
+    "position+isotonic_seq": 0.7664575864173796,
+    "position+cubic": 0.729454751732249
+   },
+   "backfit": {
+    "max_iter": 12,
+    "max_last_change": 9.590547324792031e-05
+   }
+  },
+  {
+   "assay": "SPTN1_CHICK_Tsuboyama_2023_1TUD",
+   "n_pairs": 2068,
+   "n_positions": 11,
+   "n_cells": 8,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5516798522478823,
+    "linear": 0.48802616759165807,
+    "quadratic": 0.5298721960368665,
+    "cubic": 0.5489901914435911,
+    "position": 0.23880648907269508,
+    "position+isotonic": 0.6412799861286216,
+    "position+isotonic_seq": 0.6330669560508935,
+    "position+cubic": 0.6377275480984508
+   },
+   "null_mean": {
+    "isotonic": -0.022352412910787954,
+    "linear": 0.007139236989454445,
+    "quadratic": 0.008722162438257696,
+    "cubic": 0.007007629102645896,
+    "position": -0.0038030918677509407,
+    "position+isotonic": -0.024567017523988977,
+    "position+isotonic_seq": -0.024843085978500844,
+    "position+cubic": 0.004625552943875189
+   },
+   "label_null_mean": {
+    "position": -0.00971465449236375,
+    "position+isotonic": 0.5511057250216236,
+    "position+isotonic_seq": 0.5511612537776457,
+    "position+cubic": 0.5484952588389727
+   },
+   "backfit": {
+    "max_iter": 11,
+    "max_last_change": 7.388118313050862e-05
+   }
+  },
+  {
+   "assay": "SR43C_ARATH_Tsuboyama_2023_2N88",
+   "n_pairs": 694,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.31190558813043223,
+    "linear": 0.2559633806043756,
+    "quadratic": 0.3351851075135023,
+    "cubic": 0.3327612764935518,
+    "position": 0.04550902543077129,
+    "position+isotonic": 0.38927503521993334,
+    "position+isotonic_seq": 0.3786298851090768,
+    "position+cubic": 0.4047938843249994
+   },
+   "null_mean": {
+    "isotonic": -0.05272226775957241,
+    "linear": -0.0031826966830976523,
+    "quadratic": -0.006666061585383609,
+    "cubic": -0.006766657962751532,
+    "position": -0.0074049116054772934,
+    "position+isotonic": -0.055250085642440584,
+    "position+isotonic_seq": -0.054755708168736074,
+    "position+cubic": -0.007527139290407292
+   },
+   "label_null_mean": {
+    "position": -0.005764647244226073,
+    "position+isotonic": 0.31015370417820476,
+    "position+isotonic_seq": 0.31004670702813364,
+    "position+cubic": 0.3315992592832108
+   },
+   "backfit": {
+    "max_iter": 5,
+    "max_last_change": 9.33556416167769e-05
+   }
+  },
+  {
+   "assay": "THO1_YEAST_Tsuboyama_2023_2WQG",
+   "n_pairs": 598,
+   "n_positions": 4,
+   "n_cells": 2,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.5592871831308148,
+    "linear": 0.5433994863481211,
+    "quadratic": 0.5419479966688852,
+    "cubic": 0.5656832717495401,
+    "position": 0.5775211608141692,
+    "position+isotonic": 0.7086151148787686,
+    "position+isotonic_seq": 0.6548657614520589,
+    "position+cubic": 0.7118966988831115
+   },
+   "null_mean": {
+    "isotonic": -0.07574733963989733,
+    "linear": -0.002552031941204236,
+    "quadratic": -0.012082502670134932,
+    "cubic": -0.018157510772696162,
+    "position": -0.02271284925405459,
+    "position+isotonic": -0.07964785193767629,
+    "position+isotonic_seq": -0.0805183129362134,
+    "position+cubic": -0.03128729414467688
+   },
+   "label_null_mean": {
+    "position": -0.0009441872997029144,
+    "position+isotonic": 0.5592102972108576,
+    "position+isotonic_seq": 0.5593927154371392,
+    "position+cubic": 0.5646721089125476
+   },
+   "backfit": {
+    "max_iter": 11,
+    "max_last_change": 9.538781527163032e-05
+   }
+  },
+  {
+   "assay": "UBE4B_HUMAN_Tsuboyama_2023_3L1X",
+   "n_pairs": 2370,
+   "n_positions": 13,
+   "n_cells": 9,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.6386735146288121,
+    "linear": 0.6164321732466725,
+    "quadratic": 0.6389053967019589,
+    "cubic": 0.6409767608525303,
+    "position": 0.41823259070479335,
+    "position+isotonic": 0.6709715881012255,
+    "position+isotonic_seq": 0.6637675378330823,
+    "position+cubic": 0.6726929822724161
+   },
+   "null_mean": {
+    "isotonic": -0.035486698833004884,
+    "linear": -0.0019424806781633164,
+    "quadratic": -0.0037427547555938024,
+    "cubic": -0.004367691594108658,
+    "position": -0.005433117516081043,
+    "position+isotonic": -0.03859119769269324,
+    "position+isotonic_seq": -0.032966590052468624,
+    "position+cubic": -0.007580272608407079
+   },
+   "label_null_mean": {
+    "position": -0.009077153584416608,
+    "position+isotonic": 0.6372648234295489,
+    "position+isotonic_seq": 0.6374571139541167,
+    "position+cubic": 0.639549505501987
+   },
+   "backfit": {
+    "max_iter": 12,
+    "max_last_change": 8.830103923351817e-05
+   }
+  },
+  {
+   "assay": "VILI_CHICK_Tsuboyama_2023_1YU5",
+   "n_pairs": 1305,
+   "n_positions": 7,
+   "n_cells": 4,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.38269076591576645,
+    "linear": 0.37931182866189717,
+    "quadratic": 0.38245709398296546,
+    "cubic": 0.3833187327886447,
+    "position": 0.40357035969038035,
+    "position+isotonic": 0.7110525446067358,
+    "position+isotonic_seq": 0.6739335130311246,
+    "position+cubic": 0.7126336622734564
+   },
+   "null_mean": {
+    "isotonic": -0.04392234223825779,
+    "linear": 0.0029571331038696245,
+    "quadratic": 0.001048232068689825,
+    "cubic": 0.00022702442469348937,
+    "position": -0.012531353556503522,
+    "position+isotonic": -0.051139549815447126,
+    "position+isotonic_seq": -0.04930183044266849,
+    "position+cubic": -0.003997969428332859
+   },
+   "label_null_mean": {
+    "position": -0.004719666362448871,
+    "position+isotonic": 0.3786120578976049,
+    "position+isotonic_seq": 0.3790007686223856,
+    "position+cubic": 0.379556352533774
+   },
+   "backfit": {
+    "max_iter": 11,
+    "max_last_change": 8.656854805877412e-05
+   }
+  },
+  {
+   "assay": "YAIA_ECOLI_Tsuboyama_2023_2KVT",
+   "n_pairs": 918,
+   "n_positions": 8,
+   "n_cells": 4,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.701854742827976,
+    "linear": 0.669002521835162,
+    "quadratic": 0.6990953919371989,
+    "cubic": 0.699395765947683,
+    "position": 0.5806743217820949,
+    "position+isotonic": 0.7571121311206728,
+    "position+isotonic_seq": 0.7355238164908241,
+    "position+cubic": 0.759445853610312
+   },
+   "null_mean": {
+    "isotonic": -0.004295391693439843,
+    "linear": 0.03685808137470061,
+    "quadratic": 0.03545777195061448,
+    "cubic": 0.03608302199829283,
+    "position": 0.026903298572025558,
+    "position+isotonic": -0.00012464860801726375,
+    "position+isotonic_seq": 0.014656172496308618,
+    "position+cubic": 0.03318974562793875
+   },
+   "label_null_mean": {
+    "position": 0.0033081709046676845,
+    "position+isotonic": 0.7012068736919014,
+    "position+isotonic_seq": 0.7013241055804537,
+    "position+cubic": 0.6987240034228054
+   },
+   "backfit": {
+    "max_iter": 14,
+    "max_last_change": 8.218863368747442e-05
+   }
+  },
+  {
+   "assay": "YAP1_HUMAN_Araya_2012",
+   "n_pairs": 8669,
+   "n_positions": 33,
+   "n_cells": 519,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.13557529764951104,
+    "linear": 0.05598867083206083,
+    "quadratic": 0.12888309787334395,
+    "cubic": 0.1382518881744218,
+    "position": 0.03990068746382103,
+    "position+isotonic": 0.16348853097819438,
+    "position+isotonic_seq": 0.1578930750525076,
+    "position+cubic": 0.1652632310197356
+   },
+   "null_mean": {
+    "isotonic": -0.00850035094794368,
+    "linear": -0.0015246875378396752,
+    "quadratic": 0.000676589859754273,
+    "cubic": 0.0008481273399187694,
+    "position": -0.004776164992871479,
+    "position+isotonic": -0.013092055661678837,
+    "position+isotonic_seq": -0.011190145515044759,
+    "position+cubic": -0.002926768573543148
+   },
+   "label_null_mean": {
+    "position": -0.005981383181276856,
+    "position+isotonic": 0.1314443371690141,
+    "position+isotonic_seq": 0.1314386199659096,
+    "position+cubic": 0.13402075455200382
+   },
+   "backfit": {
+    "max_iter": 13,
+    "max_last_change": 6.97081654783549e-05
+   }
+  },
+  {
+   "assay": "YNZC_BACSU_Tsuboyama_2023_2JVD",
+   "n_pairs": 1563,
+   "n_positions": 7,
+   "n_cells": 5,
+   "lambda": 1.0,
+   "r2": {
+    "additive": 0.0,
+    "isotonic": 0.7606240927677838,
+    "linear": 0.7309279191362197,
+    "quadratic": 0.7322081905366127,
+    "cubic": 0.7488794564507166,
+    "position": 0.5987355792826602,
+    "position+isotonic": 0.8125939941219987,
+    "position+isotonic_seq": 0.7981267489000987,
+    "position+cubic": 0.8079121474133812
+   },
+   "null_mean": {
+    "isotonic": -0.04860286305703991,
+    "linear": -0.0011152351626522172,
+    "quadratic": -0.0026558722672285428,
+    "cubic": -0.0062081524973831344,
+    "position": -0.01103164936217269,
+    "position+isotonic": -0.05055342429584586,
+    "position+isotonic_seq": -0.046036560911499616,
+    "position+cubic": -0.010403592959456986
+   },
+   "label_null_mean": {
+    "position": -0.008835958297821422,
+    "position+isotonic": 0.7604236579317357,
+    "position+isotonic_seq": 0.7605195623782949,
+    "position+cubic": 0.7484514519131128
+   },
+   "backfit": {
+    "max_iter": 15,
+    "max_last_change": 8.031189256479943e-05
+   }
+  }
+ ]
+}
