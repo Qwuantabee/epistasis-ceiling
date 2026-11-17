@@ -289,15 +289,19 @@ same 0.02 bar on its interval and is the reading that fails.
 both substitution slots pooled (the earlier version read only slot `a`, an
 arbitrary and non-random half of each pair) and an exact binomial instead of a
 threshold picked by eye, alanine sits above its own assay's median residual in
-**73% of 48 assays**, Bonferroni p = 0.042. But two independent checks say that is
-not residue-specific epistasis:
+**73% of 48 assays**, Bonferroni p = 0.042. But two checks stop that short of
+residue-specific epistasis:
 
 - the residue ranking reproduces across independent assay halves at only
-  **ρ +0.50** — chance;
-- alanine's fraction drops to **0.52**, exactly chance, once the magnitude
-  relationship is regressed out within assay.
+  **ρ +0.50**. That is moderate agreement, not chance: chance for a rank
+  correlation is 0. An earlier version of this line called +0.50 chance, which
+  confuses a correlation with a coin-flip rate. Something about the ranking does
+  reproduce, so this check alone does not dismiss it;
+- alanine's fraction drops to **0.52**, against a chance rate of 0.50, once the
+  magnitude relationship is regressed out within assay.
 
-So the marginal p-value is the magnitude confound leaking through. An earlier
+The second check is the one that decides it: what reproduces is consistent with
+the magnitude confound leaking through the marginal p-value. An earlier
 draft called this NOT_SUPPORTED on an arbitrary 85% bar, which was a statement
 about the bar and not a test; a later one nearly called it SUPPORTED on a p-value
 alone. Both were wrong. Verdict **INCONCLUSIVE**: no residue shows a reproducible,
@@ -400,7 +404,9 @@ the noise floor beside every number.
 **So sequence context does not tell you where additivity breaks — and neither, on
 these data, does anything else tested here.** The three candidate priors are all
 null: the magnitude of the singles (fails a construction-preserving permutation),
-residue identity (rank correlation across assay halves +0.50), and ESM-2 context
+residue identity (rank correlation across assay halves +0.50, and the one
+Bonferroni-significant residue falls to 0.52 against a chance 0.50 once magnitude
+is removed), and ESM-2 context
 (indistinguishable from pure noise, and actively harmful on top of the prior).
 What survives is the ranking result, AUC 0.884, which does not let you pick the
 pairs in advance.
@@ -556,8 +562,8 @@ requires the audit to reject each.
   positions, so these features can rank position pairs but not the substitutions
   within one.
 - **Every prior tested here is null, and that is the result.** The magnitude prior
-  fails a construction-preserving permutation, residue identity does not replicate
-  across assay halves, and ESM-2 context is indistinguishable from noise. A reader
+  fails a construction-preserving permutation, residue identity does not survive
+  removing the magnitude relationship, and ESM-2 context is indistinguishable from noise. A reader
   who came for "which pairs will break" should leave without an answer; what the
   repo establishes is the size of the gap (AUC 0.884 ranking; 4.6% of pairs beyond
   2 sd once each assay's own offset is removed; an offset whose sign is a centring
