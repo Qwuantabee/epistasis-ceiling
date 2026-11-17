@@ -2,9 +2,14 @@ THIRD-PARTY DATA AND MODELS
 
 This repository's own code is MIT.
 
-* ProteinGym (Notin et al., 2023) - the DMS substitution tables used here. Check
-  the ProteinGym repository for its licence before redistribution; this repo does
-  not vendor the data, only derived pair tables rebuildable from it.
+* ProteinGym (Notin et al., 2023) - the DMS substitution tables used here.
+  ProteinGym is released under the MIT License
+  (https://github.com/OATML-Markslab/ProteinGym, and the dataset entry at
+  https://registry.opendata.aws/proteingym/; both checked 2026-11-17). Each
+  assay comes from its original publication, which should be cited with it.
+  This repo does not vendor the raw tables: it commits per-assay summaries
+  derived from them (results/*.csv, results/*.json); the per-pair tables are
+  gitignored and rebuilt by scripts/build_pairs.py.
 * ESM-2 (facebook/esm2_t33_650M_UR50D, Lin et al. 2023) - model weights under the
   Meta licence; used here read-only for a probe that failed to find signal.
 * UniProt - queried live for sequence dates, not redistributed.
