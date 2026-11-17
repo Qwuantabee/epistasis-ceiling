@@ -201,6 +201,11 @@ def build_claims(res: Path = RES) -> tuple:
             r"total use all ", r"48 of the ")
         add("pairs", [f"{int(s.n_pairs.sum()):,}"], src + " n_pairs sum",
             cell(r"pairs with both singles measured", 1), r"use all 65 assays\*\* \(")
+        # coverage = n_pairs / doubles measured, so the quotient is the integer
+        # number of doubles each assay measured, with or without their singles.
+        add("doubles measured", [f"{round(float((s.n_pairs / s.coverage).sum())):,}"],
+            src + " sum of n_pairs / coverage",
+            r"both singles and doubles, ")
         add("min coverage", [f"{s.coverage.min():.1%}"], src + " coverage min",
             cell(r"coverage of doubles by their singles", 1), r"covers only ")
         add("median coverage", [f"{s.coverage.median():.1%}"], src + " coverage median",
@@ -253,7 +258,14 @@ def build_claims(res: Path = RES) -> tuple:
             r"the size of the gap \(AUC 0\.884 ranking; ")
         add("median within 1sd fraction", [f"{big.frac_within_1sd.median():.3f}"],
             src + " frac_within_1sd median >=500",
-            cell(r"median assay, fraction of pairs within 1 sd", 1))
+            cell(r"median assay, fraction of pairs within 1 sd, median centring", 1))
+        # The uncentred share above moves with the centring constant; the centred
+        # one is the convention-free figure, so the README quotes both.
+        add("median within 1sd fraction, centred",
+            [f"{need(big, 'frac_within_1sd_centred', src=src).median():.3f}"],
+            src + " frac_within_1sd_centred median >=500",
+            cell(r"within 1 sd, each assay's own offset removed "
+                 r"\(convention-free\)", 1))
         add("median residual bias (median centring)",
             _signed(big.bias_mean_sd.median(), "{:.2f}"), src + " bias_mean_sd median",
             r"the residual\s+cloud sits a median ",

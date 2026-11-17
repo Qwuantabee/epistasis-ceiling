@@ -10,16 +10,22 @@ AUC 0.884.** An earlier version also called the additive prediction biased by a
 median 0.94 assay-sd. That is withdrawn: the offset is set by where each assay's
 zero is put, not by additivity. For the 33 assays scored as a ΔΔG from wild type
 it reads -0.79 sd under the median centring this repo used and +1.15 sd under
-wild type = 0, positive in 33/33. Two candidate priors were tested and both
-**fail their own null**. The honest answer is that neither how dramatic the singles
-look nor which residues they involve tells you in advance where additivity breaks.
+wild type = 0, positive in 33/33. Three candidate priors for *where* additivity
+breaks were tested — the size of the singles, residue identity, ESM-2 sequence
+context — and **none survives its own null or control**. Which positions are
+involved explains a small, real part, but only after fitting on that protein's
+own measured doubles, so nothing here tells you in advance where additivity breaks.
+
+The AUC is for placing a double above or below its assay's median observed score,
+one value per assay; the unit of evidence is the 48 assays, not the pairs (one
+assay, SPG1_STRSG_Olson_2014, holds 535,917 of them).
 
 ![Additivity ceiling](figures/ceiling.png)
 
 Protein engineers screen singles because they are cheap and doubles explode
 combinatorially: 1,000 singles imply ~500,000 pairs. The bet is that effects add.
-This repo measures exactly how good that bet is, on the largest public collection
-of measured doubles (ProteinGym, 1.77M multi-mutants), and then asks the only
+This repo measures how good that bet is on the 65 ProteinGym assays that measure
+both singles and doubles, 825,437 doubles in all, and then asks the only
 useful follow-up: **can you tell in advance which pairs will break?**
 
 ## The measurement
@@ -35,7 +41,7 @@ wild type; see the section on the offset below), so the baseline is invariant to
 an additive shift in the assay scale. Residuals are then divided by each assay's own residual
 sd, because ProteinGym assays are **not** on a common scale — the Somermeyer
 deep-mutational scans report raw fluorescence in the thousands (residual sd up to
-6,098) against a median of 0.69 elsewhere. Pooling those raw would have let three
+6,098) against a corpus median of 0.69. Pooling those raw would have let three
 assays dominate every aggregate number.
 
 | | |
@@ -47,7 +53,8 @@ assays dominate every aggregate number.
 | median AUC (threshold-free direction) | **0.884** |
 | pairs beyond 2 sd from additive, per-assay **median**, median centring | **12.6%** |
 | the same, each assay's own offset removed (convention-free) | **4.6%** |
-| median assay, fraction of pairs within 1 sd | **0.431** |
+| median assay, fraction of pairs within 1 sd, median centring | **0.431** |
+| within 1 sd, each assay's own offset removed (convention-free) | **0.698** |
 
 Three denominators meet on this page, stated once here so no row is ambiguous:
 **coverage and the pair total use all 65 assays** (818,362 pairs); **every median
@@ -68,7 +75,9 @@ It also said additivity "resolves only 69% of them in the right direction". That
 0.693 is a median split at the OBSERVED median while the prediction sits above
 that median 76% of the time, so it measures the offset too. Splitting both series
 at their own medians gives 0.802, and the threshold-free AUC is **0.884** — which
-is the number to quote.
+is the number to quote. Threshold-free refers to the prediction: the observed score
+is still split at its assay median to define the two classes. The statistic that
+splits neither series is the rank correlation in the table above.
 
 ## A withdrawal, and what does survive
 
@@ -122,6 +131,12 @@ with the choice of origin is not a finding about the model, so the "biased by
 The median of all variants moves with the share of doubles in each library, which
 is why it is a poor stand-in for wild type.
 
+The median centring was avoidable for most of the corpus. Those 33 assays are 33
+of the 48 behind every median, their score is already a difference from wild
+type, and the additive reference is therefore exactly 0 with no constant to
+choose. The remaining 15 have no wild-type score in the data, so no
+convention-free signed offset exists for them, and none is quoted.
+
 What does not depend on the convention: AUC, and every statistic computed after
 removing each assay's own offset. A "fraction beyond a fixed number of sds" does
 depend on it, and a pooled fraction is not comparable to a per-assay median:
@@ -141,10 +156,20 @@ and which is why screening by additive prediction still beats not screening at a
 
 The same argument, measured per assay rather than asserted pool-wide: under the
 median centring, across the 48 assays the share past 2 sd correlates **+0.93**
-with how far that assay's additive prediction sits from zero, and only **+0.12**
-with its own residual spread.
+with how far that assay's additive prediction sits from zero.
 
-![The tail tracks the offset, not the spread](figures/bias_not_spread.png)
+![The tail tracks the offset](figures/bias_not_spread.png)
+
+**The right-hand panel of this figure is withdrawn; only the left one is
+evidence.** This line used to continue "sits from zero, and only **+0.12** with
+its own residual spread". That 0.12 is not a measurement. Every residual is divided
+by its assay's own sd, so the spread on that x-axis is 1 for all 48 assays by
+construction (the column holds 1 to within floating-point rounding, which is why
+the panel is a vertical line) and the correlation is with rounding error. The
+argument does not need it: once the spread is fixed at 1, the share past 2 sd can
+only move with the offset and the shape of the distribution, and the left panel
+shows the offset carries it. The figure and `results/figure_stats.json` still hold
+the 0.12 until `scripts/make_figures.py` is re-run without that panel.
 
 So "beyond 2 sd" is mostly a restatement of the offset. A tolerance built on it
 would flag the assays where the model is shifted, not the pairs where it is wrong.
@@ -166,7 +191,8 @@ difference between centring constants rather than labs: the Tsuboyama median
 becomes +1.15 under wild type = 0, and the other labs' wild-type score is not in
 the data. Leave-one-lab-out moves the median AUC between 0.880 and 0.941, and the
 artefact's verdict is **INCONCLUSIVE**: dropping Tsuboyama alone moves it from
-0.884 to 0.941, outside the script's tolerance. What holds is the weaker
+0.884 to 0.941, outside the script's tolerance (a fixed 0.05 of AUC, the
+author's choice). What holds is the weaker
 statement: every lab family ranks doubles well above chance, and the level
 differs by lab family.
 
@@ -179,8 +205,9 @@ the corpus (**AUC 0.848**, interval 0.755 to 0.920 around the corpus 0.884;
 verdict SUPPORTED). An earlier version also reported that their bias "does not
 replicate and even changes sign" (+0.50 against -0.94). That is withdrawn: it
 compares centring constants — the median of all variants moves with the share of
-doubles in a library, and the small assays have fewer — and under wild type = 0
-the small Tsuboyama assays agree with the big ones. Anyone quoting "0.94 sd" as a
+doubles in a library, and the small assays have fewer. What the small assays read
+under wild type = 0 was not computed: `results/reference.json` covers the 48-assay
+corpus only, so no committed number says whether they agree. Anyone quoting "0.94 sd" as a
 property of the method is quoting a centring convention.
 
 ## Where the failures concentrate
@@ -210,7 +237,8 @@ caveats, all measured, because the first version of this section overstated it:
 Flagging the hottest 10% of positions touches a median of **23%** of pairs (range
 1%–67%), so the operational promise is real but modest — not "at no extra cost".
 
-**Two harder tests, both of which cut the position result down.** The 0.333 above
+**Two harder tests, both of which cut the position result down.** The position
+R² of 0.333 in the stronger-baseline table below
 comes from a random pair split, so a held-out pair usually shares both of its
 positions with training pairs — the most favourable split available. Holding out
 **whole position pairs** (no position pair seen in training appears in test) and
@@ -224,10 +252,16 @@ allowing a **monotone global nonlinearity** both shrink it:
   position pairs, **23** hold 3–9, and **16** hold 10 or more. In the small bins the
   held-out cells have positions the model never saw and it can
   only predict the other cells' mean. **The informative stratum is the 16 assays
-  with 10 or more position pairs**, where every held-out position is seen in
+  with 10 or more position pairs**, where held-out positions are nearly always
+  seen in training (every test pair in 9 of the 16 assays, at least 99.9% of
+  test pairs in 14, and 63% in the lowest). With held-out positions seen in
   training: there position keeps **60%** of its R², scoring **0.236** on the
   random split and **0.142** on the whole-pair split; pair-rank-3 keeps **84%**,
   scoring **0.241** and **0.201**. Both beat their null in **16/16** assays.
+  Those shares are ratios of stratum medians, the artefact's own rule (HOLDS at
+  0.75 or more, COLLAPSES below 0.25, otherwise PARTIAL; position is PARTIAL and
+  pair-rank-3 HOLDS here). Paired within assay the loss is smaller: the median assay's position R²
+  drops by 0.030 [0.019, 0.058], lower in 16/16.
 
 - **Monotone global fit** (`results/monotone_fit.json`). If single-effect size
   clusters by position, a global saturation or floor would produce
@@ -245,6 +279,11 @@ position signal was a calibration curve, and a small position-specific part —
 about 0.05 of variance, 14% of the original figure — survives both tests.** The
 verdict in the artefact is SUPPORTED for that residual contribution and
 NOT_SUPPORTED for position beating the monotone curve; both readings are stored.
+The rule, written into `scripts/monotone_fit.py` before the fits were run, decides
+on the nested comparison (what position adds once the curve is present): SUPPORTED
+when the interval's lower bound clears 0.02 of variance and at least 75% of assays
+beat their label-permutation null. The head-to-head comparison is judged by the
+same 0.02 bar on its interval and is the reading that fails.
 
 **Residue identity: INCONCLUSIVE, and the earlier negative was wrong too.** With
 both substitution slots pooled (the earlier version read only slot `a`, an
@@ -326,7 +365,8 @@ singles-only can use.
 That last caveat is the important one, and it is in `results/alt_baseline.json`
 rather than here: every per-assay row is fitted on 4/5 of **that protein's own
 doubles**, so these numbers bound what a stronger baseline can achieve, not what a
-singles-only design can. Held-out whole position pairs were not run. What the
+singles-only design can. Whole position pairs were held out afterwards, and the
+result is in the section above. What the
 table and the recalibration establish together is narrower than the earlier
 reading ("the gap is not an artefact of a weak baseline"): a global recalibration
 does more than position, and about half of the residual variance survives it — a
@@ -432,12 +472,18 @@ python scripts/depth.py
 #    position-pair terms, out-of-fold, each against its own permutation null)
 python scripts/alt_baseline.py --n-perm 10 --workers 8
 
+# 5b. the two harder tests of the position term: whole position pairs held out,
+#     then a monotone global curve fitted first
+python scripts/position_holdout.py --n-perm 10 --workers 9
+python scripts/monotone_fit.py --n-perm 5 --workers 6
+
 # 6. the held-out checks: one lab or many, and the assays excluded by size
 #    (--index defaults to $EPSCEIL_INDEX, then ../_data/DMS_substitutions.csv)
 python scripts/heldout.py --index <DMS_substitutions.csv>
 
 # 6b. both centring conventions, and the two-number recalibration
-python scripts/reference.py
+#     (defaults: $EPSCEIL_DATA / $EPSCEIL_INDEX, then ../_data/)
+python scripts/reference.py --data <ProteinGym dir> --index <DMS_substitutions.csv>
 
 # 7. why a pooled rho across assays is not a within-assay rho
 python scripts/prior_units.py
@@ -456,7 +502,12 @@ python scripts/audit_claims.py --strict
 pytest tests/
 ```
 
-**What needs what.** Everything that reads the pair tables — steps 2 to 5, 6b,
+**How long.** On the committed runs, by the runtimes each artefact records:
+step 5 took 327 s on 8 workers, `position_holdout.py` 427 s on 9 and
+`monotone_fit.py` 52 s on 6. The audit and the tests finish in well under a
+minute. Step 8 needs a GPU.
+
+**What needs what.** Everything that reads the pair tables — steps 2 to 5b, 6b,
 7 and the figures — needs the gitignored `results/pairs/` from step 1, and on a
 fresh clone `rebuild_summary.py`, `prior_units.py` and `make_figures.py` stop
 with exit 1 and a message naming that directory and `build_pairs.py` rather than
@@ -477,9 +528,11 @@ requires the audit to reject each.
   They remove a median 0.381 of the residual variance and need 4/5 of the assay's
   own measured doubles to do it; a two-number linear recalibration with no
   positions removes 0.500, so most of what they capture is a global calibration,
-  and the position R² is not evidence of position-*specific* epistasis. A monotone
-  global-epistasis fit beyond that linear map (saturation, a floor) was not run,
-  and whole position pairs were never held out.
+  and the position R² is not evidence of position-*specific* epistasis. The
+  monotone global-epistasis fit and the whole-position-pair holdout that an
+  earlier version of this list named as missing have since been run; see "Where
+  the failures concentrate". Neither test uses a second protein: every fit is
+  still within one assay.
 - **ProteinGym is not one experiment.** Assays differ in scale, saturation and
   what "fitness" means (fluorescence, growth, binding). The normalisation makes
   them comparable in *spread*, not in *meaning*; the per-assay table is the real
@@ -495,7 +548,7 @@ requires the audit to reject each.
   heads, and no head beats its larger control at either size — so the null is no
   longer a statement about a 4.4% sample or a single estimator. What it still does
   not show is that no model can: one architecture (ESM-2 650M), one window size
-  (8 residues), wild-type sequence only, and a supervised model trained on matched
+  (8 residues each side), wild-type sequence only, and a supervised model trained on matched
   data remains the obvious untried test. Two further limits are recorded in the
   artefact — overlapping windows for pairs closer than 17 residues mean heads (a)
   and (c) do not fully separate window content from window overlap, and a
@@ -533,11 +586,13 @@ scripts/rebuild_summary.py  per-assay summary from the pair tables alone
 scripts/prior.py            the magnitude prior + its permutation null
 scripts/invariant_stats.py  shift-invariant correlations, AUC, bias accounting
 scripts/depth.py            position, residue and centred-prior probes
-scripts/alt_baseline.py    stronger baselines, out-of-fold, with permutation nulls
+scripts/alt_baseline.py     stronger baselines, out-of-fold, with permutation nulls
+scripts/position_holdout.py whole-position-pair holdout of the position models
+scripts/monotone_fit.py     isotonic / polynomial global curve vs the position term
 scripts/heldout.py          one-lab-in-the-corpus and size-excluded assays
 scripts/reference.py        both centring conventions; two-number recalibration
 scripts/prior_units.py      within-assay vs pooled: what a rho is measured over
-esm_context.py              the GPU probe, grouped CV by assay (4.4% sample)
+scripts/esm_context.py      the GPU probe, grouped CV by assay (4.4% sample)
 scripts/esm_scale.py        corpus-scale ESM probe, three heads, two controls
 scripts/esm_tcrit.py        the ESM verdicts under t(4) beside the 2 SE rule
 scripts/make_figures.py     figures from committed artefacts
@@ -545,6 +600,7 @@ scripts/audit_claims.py     every README number against a committed artefact
 tests/                      invariants, estimator labels, the claim audit
 tests/test_alt_baseline.py  the stronger-baseline table's nulls and means
 tests/test_esm_scale.py     the ESM verdict rule and its controls
+tests/test_position_holdout.py  both holdout verdicts re-derived from per-assay rows
 ```
 
 MIT licence for this repository's own code. ProteinGym data keeps its own terms.
